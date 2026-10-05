@@ -14,13 +14,15 @@ export const widgetIds: WidgetId[] = [
   'sports',
   'finance',
   'calendar',
+  'discover',
 ];
 export const STORAGE_KEY = 'apartment-display.layouts.v1';
 export function defaultLayouts(): Layouts {
   return {
     home: [
-      { id: 'clock', x: 0, y: 0, w: 7, h: 3 },
-      { id: 'weather', x: 7, y: 0, w: 5, h: 3 },
+      { id: 'clock', x: 0, y: 0, w: 4, h: 3 },
+      { id: 'weather', x: 4, y: 0, w: 4, h: 3 },
+      { id: 'discover', x: 8, y: 0, w: 4, h: 3 },
       { id: 'calendar', x: 0, y: 3, w: 4, h: 3 },
       { id: 'finance', x: 4, y: 3, w: 4, h: 3 },
       { id: 'sports', x: 8, y: 3, w: 4, h: 3 },
@@ -76,7 +78,7 @@ export function parseLayouts(
     const list = parsed[id];
     if (
       !Array.isArray(list) ||
-      list.length > 5 ||
+      list.length > widgetIds.length ||
       list.some((item) => !item || !widgetIds.includes(item.id)) ||
       new Set(list.map((item) => item.id)).size !== list.length ||
       list.some((item) => !canPlace(item, list, definitions))
@@ -121,7 +123,7 @@ export function presentationLayout(
     return [{ id: attention.widget, x: 0, y: 0, w: 12, h: 6 }];
   const others = items
     .filter((item) => item.id !== attention.widget)
-    .slice(0, 4);
+    .slice(0, 5);
   return [
     { id: attention.widget, x: 0, y: 0, w: 8, h: 6 },
     ...others.map((item, i) => ({ ...item, x: 8, y: i * 2, w: 4, h: 2 })),
@@ -171,6 +173,21 @@ export function portraitLayout(
   if (narrow)
     return ordered.map((item, i) => ({ ...item, x: 0, y: i * 2, w: 12, h: 2 }));
   const [primary, ...rest] = ordered;
+  const weather = rest.find((item) => item.id === 'weather');
+  if (primary.id === 'clock' && weather) {
+    const others = rest.filter((item) => item.id !== 'weather');
+    return [
+      { ...primary, x: 0, y: 0, w: 12, h: 2 },
+      { ...weather, x: 0, y: 2, w: 12, h: 3 },
+      ...others.map((item, i) => ({
+        ...item,
+        x: (i % 2) * 6,
+        y: 5 + Math.floor(i / 2) * 3,
+        w: others.length % 2 && i === others.length - 1 ? 12 : 6,
+        h: 3,
+      })),
+    ];
+  }
   const height = primary.id === 'clock' ? 2 : 4;
   return [
     { ...primary, x: 0, y: 0, w: 12, h: height },
@@ -182,4 +199,39 @@ export function portraitLayout(
       h: 3,
     })),
   ];
+}
+
+// Upgrade only the previous untouched Home default; customized boards remain intact.
+export function upgradeLayouts(layouts: Layouts): Layouts {
+  const previous: Placement[] = [
+    { id: 'clock', x: 0, y: 0, w: 7, h: 3 },
+    { id: 'weather', x: 7, y: 0, w: 5, h: 3 },
+    { id: 'calendar', x: 0, y: 3, w: 4, h: 3 },
+    { id: 'finance', x: 4, y: 3, w: 4, h: 3 },
+    { id: 'sports', x: 8, y: 3, w: 4, h: 3 },
+  ];
+  const unchanged =
+    previous.length === layouts.home.length &&
+    previous.every((old) =>
+      layouts.home.some(
+        (item) =>
+          item.id === old.id &&
+          item.x === old.x &&
+          item.y === old.y &&
+          item.w === old.w &&
+          item.h === old.h,
+      ),
+    );
+  return unchanged ? { ...layouts, home: defaultLayouts().home } : layouts;
+}
+
+// Ordinary priority events highlight the existing tile; only a severe alert takes over.
+export function boardLayout(
+  items: Placement[],
+  attention?: Candidate,
+): Placement[] {
+  return presentationLayout(
+    items,
+    attention?.presentation === 'FULLSCREEN' ? attention : undefined,
+  );
 }

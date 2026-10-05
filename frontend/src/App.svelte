@@ -5,8 +5,9 @@
   import {
     addWidget,
     defaultLayouts,
+    upgradeLayouts,
     parseLayouts,
-    presentationLayout,
+    boardLayout,
     STORAGE_KEY,
     PINS_KEY,
     parsePins,
@@ -15,7 +16,6 @@
   } from './lib/layout.ts';
   import { billEvents } from './lib/bills.ts';
   import { rankScreens } from './lib/priority.ts';
-  import { initialSession, selectScreen } from './lib/screens.ts';
   import type {
     Config,
     DashboardState,
@@ -31,14 +31,13 @@
   let dashboard = $state<DashboardState | null>(null),
     config = $state<Config | null>(null),
     definitions = $state<WidgetDefinition[]>([]);
-  let now = $state(Date.now()),
-    session = $state(initialSession(Date.now()));
+  let now = $state(Date.now());
+  let currentScreen = $state<ScreenId>('home');
   let layouts = $state<Layouts>(defaultLayouts()),
     draft = $state<Layouts>(defaultLayouts());
   let editing = $state(false),
     controls = $state(false),
     devPanel = $state(false),
-    paused = $state(false),
     busy = $state(false);
   let error = $state(''),
     notice = $state(''),
@@ -56,23 +55,25 @@
         )
       : [],
   );
-  const attention = $derived(ranks.find((c) => c.id === session.current));
+  const attention = $derived(
+    ranks.find((candidate) => candidate.modifier >= 15),
+  );
   const projected = $derived(
     pinnedLayout(
-      presentationLayout(layouts[session.current], attention),
+      boardLayout(layouts[currentScreen], attention),
       pins,
       attention?.presentation === 'FULLSCREEN',
     ),
   );
   const visible = $derived(
     editing
-      ? draft[session.current]
+      ? draft[currentScreen]
       : portrait
         ? portraitLayout(projected, narrow)
         : projected,
   );
   const currentTitle = $derived(
-    config?.screens.find((s) => s.id === session.current)?.title ?? 'Home',
+    config?.screens.find((s) => s.id === currentScreen)?.title ?? 'Home',
   );
   const stale = $derived(lastSuccess > 0 && now - lastSuccess > 15000);
   const scenarios = [
@@ -97,7 +98,7 @@
         definitions = widgets;
         try {
           const saved = localStorage.getItem(STORAGE_KEY);
-          if (saved) layouts = parseLayouts(saved, widgets);
+          if (saved) layouts = upgradeLayouts(parseLayouts(saved, widgets));
         } catch {
           notice = 'Saved layout could not be loaded. Using defaults.';
         }
@@ -131,8 +132,6 @@
     void poll();
     const tick = setInterval(() => {
       now = Date.now();
-      if (config && dashboard && !editing && !paused && !stale)
-        session = selectScreen(session, ranks, config.screens, now);
     }, 1000);
     return () => {
       window.removeEventListener('resize', resize);
@@ -142,14 +141,9 @@
     };
   });
   function choose(id: ScreenId) {
-    session = {
-      ...session,
-      current: id,
-      since: now,
-      lastShown: { ...session.lastShown, [session.current]: now, [id]: now },
-      activeEvent: undefined,
-    };
+    currentScreen = id;
   }
+
   function togglePin(id: WidgetId) {
     const next = pins.includes(id)
       ? pins.filter((pin) => pin !== id)
@@ -172,7 +166,6 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
       layouts = structuredClone($state.snapshot(draft));
       editing = false;
-      session = { ...session, since: now };
       notice = 'Layout saved on this browser.';
     } catch {
       notice =
@@ -181,15 +174,14 @@
   }
   function cancel() {
     editing = false;
-    session = { ...session, since: now };
     notice = 'Changes discarded.';
   }
   function update(items: Placement[]) {
-    draft = { ...draft, [session.current]: items };
+    draft = { ...draft, [currentScreen]: items };
   }
   function add(id: WidgetId) {
     const definition = definitions.find((d) => d.id === id)!;
-    const next = addWidget(draft[session.current], definition);
+    const next = addWidget(draft[currentScreen], definition);
     if (next) {
       update(next);
       notice = '';
@@ -248,17 +240,13 @@
     <nav class="control-bar" aria-label="Display controls">
       <div class="screen-buttons">
         {#each config?.screens ?? [] as screen}<button
-            class:selected={session.current === screen.id}
+            class:selected={currentScreen === screen.id}
             onclick={() => choose(screen.id)}>{screen.title}</button
           >{/each}
       </div>
       <div class="control-actions">
-        {#if !editing}<button
-            onclick={() => {
-              paused = !paused;
-              session = { ...session, since: now };
-            }}>{paused ? 'Resume rotation' : 'Pause rotation'}</button
-          ><button onclick={beginEdit} disabled={!dashboard}>Edit layout</button
+        {#if !editing}<button onclick={beginEdit} disabled={!dashboard}
+            >Edit layout</button
           ><button onclick={fullscreen}>Fullscreen</button
           >{#if import.meta.env.DEV && config?.development}<button
               class:selected={devPanel}
@@ -267,7 +255,7 @@
             onclick={() => {
               draft = {
                 ...draft,
-                [session.current]: defaultLayouts()[session.current],
+                [currentScreen]: defaultLayouts()[currentScreen],
               };
             }}>Restore this screen</button
           ><button onclick={cancel}>Cancel</button><button
@@ -304,7 +292,7 @@
             e.currentTarget.value = '';
           }}
           ><option value="">Choose a widget…</option
-          >{#each definitions.filter((d) => !draft[session.current].some((p) => p.id === d.id)) as widget}<option
+          >{#each definitions.filter((d) => !draft[currentScreen].some((p) => p.id === d.id)) as widget}<option
               value={widget.id}>{widget.title}</option
             >{/each}</select
         ></label
@@ -319,7 +307,7 @@
       {notice}
     </p>{/if}
   {#if dashboard}
-    {#if !editing && attention?.presentation !== 'NORMAL'}<div
+    {#if !editing && attention}<div
         class="attention-banner"
         class:severe={attention?.presentation === 'FULLSCREEN'}
       >
@@ -331,15 +319,16 @@
               : attention?.widget === 'finance'
                 ? 'A financial reminder'
                 : 'Worth a look'}</span
-        ><span>Mock data · temporary emphasis</span>
+        ><span>Mock data · attention needed</span>
       </div>{/if}
     <div class="board-slot">
-      {#key session.current}<DashboardGrid
+      {#key currentScreen}<DashboardGrid
           items={visible}
           {dashboard}
           {now}
           {editing}
           {definitions}
+          {attention}
           onchange={update}
         />{/key}
     </div>
@@ -350,17 +339,10 @@
     </div>{/if}
   <footer>
     <div class="screen-indicators" aria-label="Current screen">
-      {#each config?.screens ?? [] as screen}<span
-          class:active={session.current === screen.id}
-          title={screen.title}
-        ></span>{/each}<span class="rotation-label"
-        >{editing
-          ? 'Editing · rotation paused'
-          : paused
-            ? 'Rotation paused'
-            : pins.length
-              ? `Automatic rotation · ${pins.length} pinned`
-              : 'Automatic rotation'}</span
+      <span class="rotation-label"
+        >{editing ? 'Editing layout' : 'Your board'}{pins.length
+          ? ` · ${pins.length} pinned`
+          : ''}</span
       >
     </div>
     <span
@@ -377,9 +359,7 @@
     <aside class="dev-panel" aria-label="Development simulations">
       <div>
         <p class="eyebrow">Development · Scenario lab</p>
-        <p>
-          Events expire after 2 minutes. Minimum screen duration: 10 seconds.
-        </p>
+        <p>Events expire after 2 minutes. Highlights stay on this board.</p>
       </div>
       <div class="scenario-buttons">
         {#each scenarios as [value, label]}<button

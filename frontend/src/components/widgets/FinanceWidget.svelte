@@ -15,27 +15,32 @@
 <div class="widget-body finance">
   <p class="eyebrow">On the horizon <span>Bills</span></p>
   {#if bill}
-    <p class="widget-title">{bill.name}</p>
-    <p class="bill-amount">{money(bill.amount)}</p>
-    <p class="quiet">
-      Due {day(bill.dueAt, now).toLowerCase()}{#if size !== 'small'}
-        <span class="autopay"
-          >{bill.autopay ? 'Autopay on' : 'Manual payment'}</span
-        >{/if}
-    </p>
+    <div class="bill-summary">
+      <p class="widget-title">{bill.name}</p>
+      <p class="bill-amount">{money(bill.amount)}</p>
+    </div>
+    <div class="bill-meta">
+      <p class="quiet">Due {day(bill.dueAt, now)}</p>
+      <span class="autopay"
+        >{bill.autopay ? 'Autopay on' : 'Manual payment'}</span
+      >
+    </div>
+    {#if size === 'large'}
+      <div class="bill-list">
+        {#each bills.slice(1, 3) as other}<div>
+            <span
+              >{other.name}<small
+                >{day(other.dueAt, now)} · {other.autopay
+                  ? 'Autopay'
+                  : 'Manual'}</small
+              ></span
+            ><strong>{money(other.amount)}</strong>
+          </div>{/each}
+      </div>
+      {#if bills.length > 3}<p class="quiet">
+          +{bills.length - 3} more upcoming bills
+        </p>{/if}
+    {/if}
   {:else}<p class="widget-title">All clear</p>
     <p class="quiet">No upcoming bills.</p>{/if}
-  {#if size === 'large'}
-    <div class="bill-list">
-      {#each bills.slice(1) as other}<div>
-          <span
-            >{other.name}<small
-              >{day(other.dueAt, now)} · {other.autopay
-                ? 'Autopay'
-                : 'Manual'}</small
-            ></span
-          ><strong>{money(other.amount)}</strong>
-        </div>{/each}
-    </div>
-  {/if}
 </div>

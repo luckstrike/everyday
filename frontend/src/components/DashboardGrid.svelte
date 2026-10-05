@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Candidate } from '../lib/priority.ts';
   import Widget from './Widget.svelte';
   import { canPlace, widgetSize } from '../lib/layout.ts';
   import type {
@@ -15,6 +16,7 @@
     editing,
     definitions,
     onchange,
+    attention,
   }: {
     items: Placement[];
     dashboard: DashboardState;
@@ -22,6 +24,7 @@
     editing: boolean;
     definitions: WidgetDefinition[];
     onchange: (items: Placement[]) => void;
+    attention?: Candidate;
   } = $props();
   let grid: HTMLDivElement;
   let gridWidth = $state(1280),
@@ -31,8 +34,14 @@
   const rows = $derived(Math.max(6, ...items.map((item) => item.y + item.h)));
   function sizeFor(item: Placement): Size {
     if (editing) return widgetSize(item);
-    const width = (gridWidth * item.w) / 12,
-      height = (gridHeight * item.h) / rows;
+    const gap = grid ? parseFloat(getComputedStyle(grid).columnGap) : 16;
+    const width =
+      ((gridWidth - gap * 11) * item.w) / 12 + gap * (item.w - 1) - 2;
+    const height =
+      ((gridHeight - gap * (rows - 1)) * item.h) / rows +
+      gap * (item.h - 1) -
+      2;
+    if (item.id === 'discover' && (width < 320 || height < 280)) return 'small';
     if (width < 250 || height < 220) return 'small';
     if (width >= 500 && height >= (item.id === 'finance' ? 400 : 500))
       return 'large';
@@ -110,6 +119,7 @@
       class="widget"
       class:clock-panel={item.id === 'clock'}
       class:moving={active === item.id}
+      class:emphasized={!editing && attention?.widget === item.id}
       class:large={sizeFor(item) === 'large'}
       class:small={sizeFor(item) === 'small'}
       style={`grid-column:${item.x + 1}/span ${item.w};grid-row:${item.y + 1}/span ${item.h};`}

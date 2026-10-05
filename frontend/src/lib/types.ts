@@ -1,4 +1,5 @@
-export type WidgetId = 'clock' | 'weather' | 'sports' | 'finance' | 'calendar';
+export type WidgetId =
+  'clock' | 'weather' | 'sports' | 'finance' | 'calendar' | 'discover';
 export type ScreenId = 'home' | 'weather' | 'sports' | 'finance';
 export type Size = 'small' | 'medium' | 'large';
 export type Presentation = 'NORMAL' | 'EMPHASIZED' | 'FULLSCREEN';
@@ -53,6 +54,13 @@ export interface DashboardState {
     precipitation: number;
     tomorrow: string;
     hourly: { label: string; temperature: number; condition: string }[];
+    daily: {
+      date: string;
+      high: number;
+      low: number;
+      condition: string;
+      precipitation: number;
+    }[];
     alert: string;
   };
   sports: {
@@ -75,6 +83,15 @@ export interface DashboardState {
     location: string;
     startsAt: string;
     endsAt: string;
+  }[];
+  localEvents: {
+    id: string;
+    title: string;
+    venue: string;
+    startsAt: string;
+    category: string;
+    price: string;
+    reason: string;
   }[];
   events: AttentionEvent[];
 }

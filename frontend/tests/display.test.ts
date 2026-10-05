@@ -7,6 +7,8 @@ import {
   defaultLayouts,
   pinnedLayout,
   portraitLayout,
+  boardLayout,
+  upgradeLayouts,
   overlaps,
   parsePins,
   presentationLayout,
@@ -141,7 +143,7 @@ test('portrait and narrow projections fit their columns and preserve layout rest
     snapshot = JSON.stringify(saved);
   for (const narrow of [false, true]) {
     const projected = portraitLayout(pinnedLayout(saved, ['finance']), narrow);
-    assert.equal(projected.length, 5);
+    assert.equal(projected.length, 6);
     for (const item of projected) {
       assert.ok(item.x + item.w <= 12);
       assert.ok(
@@ -195,4 +197,33 @@ test('persistent bill reminders do not starve the other screens', () => {
     }
     assert.deepEqual(seen, new Set(['home', 'finance', 'weather', 'sports']));
   }
+});
+
+test('bill attention preserves board geometry instead of rotating or replacing tiles', () => {
+  const saved = defaultLayouts().home;
+  for (const elapsed of [0, 60000, 3600000]) {
+    const ranked = rankScreens(
+      [finance],
+      [],
+      billEvents([bill(1)], now + elapsed),
+      now + elapsed,
+    );
+    assert.deepEqual(boardLayout(saved, ranked[0]), saved);
+  }
+});
+
+test('adding the discovery default does not overwrite a customized saved layout', () => {
+  const saved = defaultLayouts();
+  saved.home = [{ id: 'clock', x: 1, y: 0, w: 3, h: 3 }];
+  assert.equal(upgradeLayouts(saved), saved);
+  const old = defaultLayouts();
+  old.home = [
+    { id: 'clock', x: 0, y: 0, w: 7, h: 3 },
+    { id: 'weather', x: 7, y: 0, w: 5, h: 3 },
+    { id: 'calendar', x: 0, y: 3, w: 4, h: 3 },
+    { id: 'finance', x: 4, y: 3, w: 4, h: 3 },
+    { id: 'sports', x: 8, y: 3, w: 4, h: 3 },
+  ];
+  assert.ok(upgradeLayouts(old).home.some((item) => item.id === 'discover'));
+  assert.equal(old.home.length, 5);
 });

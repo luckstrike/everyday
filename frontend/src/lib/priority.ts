@@ -22,6 +22,7 @@ export const modifiers: Record<string, Record<string, number>> = {
 export const screenFor: Record<WidgetId, ScreenId> = {
   clock: 'home',
   calendar: 'home',
+  discover: 'home',
   weather: 'weather',
   sports: 'sports',
   finance: 'finance',

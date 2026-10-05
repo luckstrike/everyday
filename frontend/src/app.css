@@ -1032,3 +1032,309 @@ main.display-mode {
     padding: 12px 0;
   }
 }
+
+/* Widgets show a deliberate amount of content at each size; they are not scroll panes. */
+.widget-body {
+  overflow: hidden;
+}
+.widget.emphasized {
+  border-color: var(--accent);
+}
+.clock .eyebrow {
+  text-transform: none;
+}
+.widget .finance .bill-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.widget .finance .widget-title {
+  display: block;
+  margin: 0;
+  font-size: 22px;
+}
+.widget .finance .bill-amount {
+  display: block;
+  margin: 0;
+  font-size: 44px;
+  line-height: 1.1;
+}
+.widget .finance .bill-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 16px;
+}
+.widget .finance .bill-meta .quiet {
+  margin: 0;
+  font-size: 13px;
+}
+.widget .finance .autopay {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.widget .finance .bill-list {
+  margin-top: 20px;
+}
+.widget.small .finance .bill-summary {
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.widget.small .finance .widget-title {
+  font-size: 18px;
+}
+.widget.small .finance .bill-amount {
+  font-size: 28px;
+}
+.widget.small .finance .bill-meta {
+  margin-top: 8px;
+  gap: 6px 8px;
+}
+.widget.small .finance .autopay {
+  font-size: 9px;
+  padding: 3px 6px;
+}
+.widget.small .finance .bill-meta .quiet {
+  font-size: 12px;
+}
+.weather .eyebrow {
+  margin-bottom: 14px;
+}
+.weather-current {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.weather-current .temperature {
+  font-size: 54px;
+  letter-spacing: -3px;
+}
+.weather-current .widget-title {
+  font-size: 18px;
+  margin: 0 0 5px;
+}
+.weather-current .quiet {
+  font-size: 11px;
+}
+.forecast-switch {
+  display: flex;
+  gap: 4px;
+  margin: 16px 0 12px;
+}
+.forecast-switch button {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-color: transparent;
+}
+.forecast-switch button[aria-pressed='true'] {
+  border-color: var(--line);
+  color: var(--accent);
+  background: oklch(28% 0.02 145);
+}
+.forecast-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.forecast-strip > div {
+  min-width: 0;
+}
+.forecast-strip span,
+.forecast-strip small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.forecast-strip strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 500;
+  margin-top: 6px;
+  white-space: nowrap;
+}
+.forecast-strip strong small {
+  font-size: 13px;
+}
+.forecast-strip > div > small {
+  display: block;
+  margin-top: 8px;
+}
+.large .weather-current .temperature {
+  font-size: 80px;
+}
+.large .weather-current .widget-title {
+  font-size: 26px;
+}
+.large .forecast-switch {
+  margin-top: 24px;
+}
+.large .forecast-strip {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.large .forecast-strip strong {
+  font-size: 28px;
+}
+.small .weather {
+  padding: 8px 12px;
+}
+.small .weather .eyebrow {
+  margin: 0 0 4px;
+  font-size: 9px;
+}
+.small .weather-current {
+  gap: 12px;
+}
+.small .weather-current .temperature {
+  font-size: 32px;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.small .weather-current .widget-title {
+  font-size: 14px;
+  margin: 0;
+}
+.small .forecast-switch {
+  margin: 4px 0;
+}
+.small .forecast-switch button {
+  font-size: 10px;
+  padding: 2px 8px;
+}
+.small .forecast-strip {
+  gap: 6px;
+}
+.small .forecast-strip span {
+  font-size: 10px;
+}
+.small .forecast-strip strong {
+  display: inline;
+  margin: 0 0 0 6px;
+  font-size: 13px;
+}
+.small .forecast-strip strong small {
+  font-size: 10px;
+}
+.discovery-date {
+  color: var(--accent);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+.discover .widget-title {
+  font-size: 25px;
+  margin-bottom: 10px;
+}
+.discovery-price {
+  margin-top: 8px;
+}
+.discovery-reason {
+  font-size: 18px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.discovery-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 20px;
+}
+.discovery-controls span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.discovery-controls button {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+.small .discover {
+  padding: 10px 14px;
+}
+.small .discover .eyebrow {
+  margin-bottom: 4px;
+  font-size: 9px;
+}
+.small .discovery-date {
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+.small .discover .widget-title {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.small .discover .quiet {
+  font-size: 10px;
+}
+.small .discovery-controls {
+  margin-top: 4px;
+}
+.small .discovery-controls button {
+  padding: 2px 6px;
+  font-size: 10px;
+}
+@media (max-width: 500px) {
+  .display-mode .small .clock .eyebrow {
+    margin-bottom: 4px;
+  }
+  .display-mode .small .clock-time {
+    font-size: 38px;
+  }
+  .display-mode .small .clock-date {
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .display-mode .small .calendar .widget-title {
+    font-size: 17px;
+    max-width: none;
+  }
+  .display-mode .small .event-when {
+    margin-bottom: 6px;
+  }
+  .display-mode .small .finance .widget-title {
+    font-size: 16px;
+  }
+  .display-mode .small .finance .bill-amount {
+    font-size: 24px;
+  }
+  .display-mode .small .finance .bill-meta {
+    margin-top: 6px;
+  }
+}
+@container (max-height: 115px) {
+  .small .weather-current .temperature {
+    font-size: 26px;
+  }
+  .small .weather .forecast-switch {
+    margin: 2px 0;
+  }
+  .small .discover {
+    padding: 8px 12px;
+  }
+  .small .discover .eyebrow,
+  .small .discovery-date,
+  .small .discover .widget-title {
+    margin-bottom: 2px;
+  }
+  .small .discovery-controls {
+    margin-top: 2px;
+  }
+  .small .sports {
+    padding: 10px 14px;
+  }
+  .small .sports .eyebrow {
+    margin-bottom: 6px;
+  }
+  .small .sports .widget-title {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+  .small .sports .quiet {
+    font-size: 12px;
+  }
+}

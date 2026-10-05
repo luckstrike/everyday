@@ -33,6 +33,7 @@ const widgets: WidgetDefinition[] = [
   'sports',
   'finance',
   'calendar',
+  'discover',
 ].map((id) => ({
   id,
   title: id,
@@ -228,7 +229,7 @@ test('saved layout validation protects bounds, collisions, unknown IDs and dupli
     ),
   );
   assert.equal(
-    canPlace({ ...layouts.home[0], w: 6 }, layouts.home, widgets),
+    canPlace({ ...layouts.home[0], w: 3 }, layouts.home, widgets),
     true,
   );
   const removed = layouts.home.filter((p) => p.id !== 'sports');
@@ -237,6 +238,6 @@ test('saved layout validation protects bounds, collisions, unknown IDs and dupli
       removed,
       widgets.find((w) => w.id === 'sports')!,
     )?.length,
-    5,
+    6,
   );
 });

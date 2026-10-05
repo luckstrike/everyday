@@ -2,48 +2,49 @@
   import type { DashboardState, Size } from '../../lib/types.ts';
   let { data, size }: { data: DashboardState['weather']; size: Size } =
     $props();
+  let forecast = $state<'hours' | 'days'>('days');
 </script>
 
 <div class="widget-body weather">
   <p class="eyebrow">Weather <span>{data.location}</span></p>
-  <div class="weather-main">
-    <span class="temperature">{data.temperature}°</span><svg
-      class="weather-icon"
-      viewBox="0 0 80 70"
-      fill="none"
-      aria-hidden="true"
-      ><circle
-        cx="48"
-        cy="25"
-        r="14"
-        stroke="currentColor"
-        stroke-width="2"
-      /><path
-        d="M48 3v5M70 25h6M65 8l-4 5M28 7l4 5M22 25h5"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-      /><path
-        d="M18 59a12 12 0 010-24 17 17 0 0132-3 14 14 0 016 27H18Z"
-        fill="var(--surface)"
-        stroke="currentColor"
-        stroke-width="2"
-      /></svg
+  <div class="weather-current">
+    <span class="temperature">{data.temperature}°</span>
+    <div>
+      <p class="widget-title">{data.condition}</p>
+      {#if size !== 'small'}<p class="quiet">
+          High {data.high}° · Low {data.low}° · {data.precipitation}% rain
+        </p>{/if}
+    </div>
+  </div>
+  {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
+  <div class="forecast-switch" aria-label="Weather forecast">
+    <button
+      aria-pressed={forecast === 'hours'}
+      onclick={() => (forecast = 'hours')}>Hours</button
+    ><button
+      aria-pressed={forecast === 'days'}
+      onclick={() => (forecast = 'days')}>Days</button
     >
   </div>
-  <p class="widget-title">{data.condition}</p>
-  {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
-  {#if size !== 'small'}<p class="quiet weather-range">
-      High {data.high}° <span>Low {data.low}°</span>
-      <span>{data.precipitation}% rain</span>
-    </p>{/if}
-  {#if size === 'large'}
-    <div class="forecast">
-      {#each data.hourly as hour}<div>
-          <p class="quiet">{hour.label}</p>
-          <strong>{hour.temperature}°</strong><small>{hour.condition}</small>
+  {#if forecast === 'hours'}
+    <div class="forecast-strip">
+      {#each data.hourly.slice(0, size === 'small' ? 3 : 4) as hour}<div>
+          <span>{hour.label}</span><strong>{hour.temperature}°</strong
+          >{#if size === 'large'}<small>{hour.condition}</small>{/if}
         </div>{/each}
     </div>
-    <p class="tomorrow"><span class="eyebrow">Tomorrow</span>{data.tomorrow}</p>
+  {:else}
+    <div class="forecast-strip">
+      {#each (data.daily ?? []).slice(0, size === 'small' ? 3 : 4) as day}<div>
+          <span
+            >{new Date(day.date).toLocaleDateString('en-US', {
+              weekday: 'short',
+            })}</span
+          ><strong>{day.high}° <small>{day.low}°</small></strong
+          >{#if size === 'large'}<small
+              >{day.condition} · {day.precipitation}%</small
+            >{/if}
+        </div>{/each}
+    </div>
   {/if}
 </div>

@@ -7,16 +7,33 @@ type Hour struct {
 	Temperature int    `json:"temperature"`
 	Condition   string `json:"condition"`
 }
+type ForecastDay struct {
+	Date          time.Time `json:"date"`
+	High          int       `json:"high"`
+	Low           int       `json:"low"`
+	Condition     string    `json:"condition"`
+	Precipitation int       `json:"precipitation"`
+}
+type LocalEvent struct {
+	ID       string    `json:"id"`
+	Title    string    `json:"title"`
+	Venue    string    `json:"venue"`
+	StartsAt time.Time `json:"startsAt"`
+	Category string    `json:"category"`
+	Price    string    `json:"price"`
+	Reason   string    `json:"reason"`
+}
 type Weather struct {
-	Location      string `json:"location"`
-	Temperature   int    `json:"temperature"`
-	Condition     string `json:"condition"`
-	High          int    `json:"high"`
-	Low           int    `json:"low"`
-	Precipitation int    `json:"precipitation"`
-	Tomorrow      string `json:"tomorrow"`
-	Hourly        []Hour `json:"hourly"`
-	Alert         string `json:"alert"`
+	Daily         []ForecastDay `json:"daily"`
+	Location      string        `json:"location"`
+	Temperature   int           `json:"temperature"`
+	Condition     string        `json:"condition"`
+	High          int           `json:"high"`
+	Low           int           `json:"low"`
+	Precipitation int           `json:"precipitation"`
+	Tomorrow      string        `json:"tomorrow"`
+	Hourly        []Hour        `json:"hourly"`
+	Alert         string        `json:"alert"`
 }
 type Sports struct {
 	League    string    `json:"league"`
@@ -54,6 +71,7 @@ type AttentionEvent struct {
 	Decay     bool      `json:"decay"`
 }
 type State struct {
+	LocalEvents []LocalEvent     `json:"localEvents"`
 	GeneratedAt time.Time        `json:"generatedAt"`
 	Mock        bool             `json:"mock"`
 	Scenario    string           `json:"scenario"`
@@ -93,6 +111,7 @@ func Widgets() []Widget {
 		{"sports", "Sports", 20, 3, 2, 4, 3},
 		{"finance", "Upcoming bills", 25, 3, 2, 4, 3},
 		{"calendar", "Calendar", 25, 3, 2, 4, 3},
+		{"discover", "Around Dallas", 15, 3, 2, 4, 3},
 	}
 }
 func Configuration(dev bool) Config {
