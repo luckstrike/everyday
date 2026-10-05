@@ -10,10 +10,10 @@ func weatherState() domain.Weather {
 	return domain.Weather{Location: "Chicago, IL", Temperature: 68, Condition: "Partly cloudy", High: 72, Low: 57, Precipitation: 10, Tomorrow: "A little warmer. Sunshine with a high of 74°.", Hourly: []domain.Hour{{Label: "Now", Temperature: 68, Condition: "Partly cloudy"}, {Label: "+1h", Temperature: 67, Condition: "Cloudy"}, {Label: "+2h", Temperature: 65, Condition: "Cloudy"}, {Label: "+3h", Temperature: 63, Condition: "Clear"}, {Label: "+4h", Temperature: 61, Condition: "Clear"}}, Alert: ""}
 }
 func sportsState(now time.Time) domain.Sports {
-	return domain.Sports{League: "NBA · Preseason", Home: "Bulls", Away: "Bucks", Status: "scheduled", Detail: "United Center · Chicago", StartsAt: now.Add(48 * time.Hour)}
+	return domain.Sports{League: "NBA · Preseason", Home: "Mavericks", HomeCode: "DAL", Away: "Spurs", AwayCode: "SAS", Status: "scheduled", Detail: "American Airlines Center · Dallas", StartsAt: now.Add(48 * time.Hour)}
 }
 func financeState(now time.Time) domain.Finance {
-	return domain.Finance{Bills: []domain.Bill{{Name: "Electricity", Amount: 84.50, DueAt: now.Add(5 * 24 * time.Hour), Autopay: true}, {Name: "Internet", Amount: 65, DueAt: now.Add(9 * 24 * time.Hour), Autopay: true}, {Name: "Rent", Amount: 1850, DueAt: now.Add(20 * 24 * time.Hour), Autopay: false}}, MonthlyBudget: 3200, Spent: 2146.80}
+	return domain.Finance{Bills: []domain.Bill{{Name: "Electricity", Amount: 84.50, DueAt: now.Add(5 * 24 * time.Hour), Autopay: true}, {Name: "Internet", Amount: 65, DueAt: now.Add(9 * 24 * time.Hour), Autopay: true}, {Name: "Rent", Amount: 1850, DueAt: now.Add(20 * 24 * time.Hour), Autopay: false}}}
 }
 func calendarState(now time.Time) []domain.CalendarEvent {
 	return []domain.CalendarEvent{{Title: "Dinner with friends", Location: "Lula Cafe", StartsAt: now.Add(25 * time.Hour), EndsAt: now.Add(27 * time.Hour)}, {Title: "Weekly planning", Location: "At home", StartsAt: now.Add(48 * time.Hour), EndsAt: now.Add(49 * time.Hour)}}
@@ -51,7 +51,7 @@ func Build(anchor, now time.Time, scenario string, started time.Time) domain.Sta
 		state.Sports.Status = "final"
 		state.Sports.HomeScore = 112
 		state.Sports.AwayScore = 108
-		state.Sports.Detail = "Final · Bulls win"
+		state.Sports.Detail = "Final · Mavericks win"
 	case "bill":
 		widget, kind = "finance", "tomorrow"
 		state.Finance.Bills[0].DueAt = started.Add(24 * time.Hour)

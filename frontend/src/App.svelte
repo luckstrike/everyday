@@ -8,7 +8,12 @@
     parseLayouts,
     presentationLayout,
     STORAGE_KEY,
+    PINS_KEY,
+    parsePins,
+    pinnedLayout,
+    portraitLayout,
   } from './lib/layout.ts';
+  import { billEvents } from './lib/bills.ts';
   import { rankScreens } from './lib/priority.ts';
   import { initialSession, selectScreen } from './lib/screens.ts';
   import type {
@@ -20,6 +25,9 @@
     WidgetDefinition,
     WidgetId,
   } from './lib/types.ts';
+  let pins = $state<WidgetId[]>([]);
+  let portrait = $state(false),
+    narrow = $state(false);
   let dashboard = $state<DashboardState | null>(null),
     config = $state<Config | null>(null),
     definitions = $state<WidgetDefinition[]>([]);
@@ -37,14 +45,31 @@
     lastSuccess = $state(0);
   const ranks = $derived(
     config
-      ? rankScreens(config.screens, definitions, dashboard?.events ?? [], now)
+      ? rankScreens(
+          config.screens,
+          definitions,
+          [
+            ...(dashboard?.events ?? []),
+            ...billEvents(dashboard?.finance.bills ?? [], now),
+          ],
+          now,
+        )
       : [],
   );
   const attention = $derived(ranks.find((c) => c.id === session.current));
+  const projected = $derived(
+    pinnedLayout(
+      presentationLayout(layouts[session.current], attention),
+      pins,
+      attention?.presentation === 'FULLSCREEN',
+    ),
+  );
   const visible = $derived(
     editing
       ? draft[session.current]
-      : presentationLayout(layouts[session.current], attention),
+      : portrait
+        ? portraitLayout(projected, narrow)
+        : projected,
   );
   const currentTitle = $derived(
     config?.screens.find((s) => s.id === session.current)?.title ?? 'Home',
@@ -85,6 +110,18 @@
     }
   }
   onMount(() => {
+    const resize = () => {
+      portrait = window.innerHeight > window.innerWidth;
+      narrow = window.innerWidth < 500;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    try {
+      const saved = localStorage.getItem(PINS_KEY);
+      if (saved) pins = parsePins(saved);
+    } catch {
+      notice = 'Saved pins could not be loaded.';
+    }
     let stopped = false,
       timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
@@ -98,6 +135,7 @@
         session = selectScreen(session, ranks, config.screens, now);
     }, 1000);
     return () => {
+      window.removeEventListener('resize', resize);
       stopped = true;
       clearTimeout(timer);
       clearInterval(tick);
@@ -111,6 +149,18 @@
       lastShown: { ...session.lastShown, [session.current]: now, [id]: now },
       activeEvent: undefined,
     };
+  }
+  function togglePin(id: WidgetId) {
+    const next = pins.includes(id)
+      ? pins.filter((pin) => pin !== id)
+      : [...pins, id];
+    try {
+      localStorage.setItem(PINS_KEY, JSON.stringify(next));
+      pins = next;
+      notice = '';
+    } catch {
+      notice = 'Could not save pins. Browser storage is unavailable.';
+    }
   }
   function beginEdit() {
     draft = structuredClone($state.snapshot(layouts));
@@ -163,7 +213,12 @@
   async function fullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
+      else {
+        await document.documentElement.requestFullscreen();
+        controls = false;
+        devPanel = false;
+        window.scrollTo(0, 0);
+      }
     } catch {
       notice = 'Use your browser’s fullscreen command to fill the display.';
     }
@@ -171,7 +226,7 @@
 </script>
 
 <svelte:head><title>{currentTitle} · Apartment</title></svelte:head>
-<main>
+<main class:display-mode={!editing} class:portrait>
   <header class="display-header">
     <div class="wordmark">
       <span class="brand-symbol" aria-hidden="true">⌂</span> Apartment
@@ -220,6 +275,23 @@
             onclick={save}>Save layout</button
           >{/if}
       </div>
+      {#if !editing}
+        <div class="pin-controls">
+          <span class="eyebrow">Keep visible</span>
+          {#each definitions as widget}<button
+              aria-pressed={pins.includes(widget.id)}
+              class:selected={pins.includes(widget.id)}
+              onclick={() => togglePin(widget.id)}
+              >{pins.includes(widget.id)
+                ? 'Pinned: '
+                : 'Pin '}{widget.title}</button
+            >{/each}
+          <p>
+            Pinned widgets stay across screens. Fullscreen alerts temporarily
+            take precedence.
+          </p>
+        </div>
+      {/if}
     </nav>
   {/if}
   {#if editing}<div class="editor-toolbar">
@@ -259,16 +331,18 @@
               : attention?.widget === 'finance'
                 ? 'A financial reminder'
                 : 'Worth a look'}</span
-        ><span>Simulated event · temporary emphasis</span>
+        ><span>Mock data · temporary emphasis</span>
       </div>{/if}
-    {#key session.current}<DashboardGrid
-        items={visible}
-        {dashboard}
-        {now}
-        {editing}
-        {definitions}
-        onchange={update}
-      />{/key}
+    <div class="board-slot">
+      {#key session.current}<DashboardGrid
+          items={visible}
+          {dashboard}
+          {now}
+          {editing}
+          {definitions}
+          onchange={update}
+        />{/key}
+    </div>
   {:else}<div class="loading">
       <p class="eyebrow">Apartment display</p>
       <h1>Getting your day ready.</h1>
@@ -284,7 +358,9 @@
           ? 'Editing · rotation paused'
           : paused
             ? 'Rotation paused'
-            : 'Automatic rotation'}</span
+            : pins.length
+              ? `Automatic rotation · ${pins.length} pinned`
+              : 'Automatic rotation'}</span
       >
     </div>
     <span

@@ -4,6 +4,7 @@
   import type {
     DashboardState,
     Placement,
+    Size,
     WidgetDefinition,
     WidgetId,
   } from '../lib/types.ts';
@@ -23,9 +24,20 @@
     onchange: (items: Placement[]) => void;
   } = $props();
   let grid: HTMLDivElement;
+  let gridWidth = $state(1280),
+    gridHeight = $state(800);
   let active = $state<WidgetId | null>(null);
   let feedback = $state('');
   const rows = $derived(Math.max(6, ...items.map((item) => item.y + item.h)));
+  function sizeFor(item: Placement): Size {
+    if (editing) return widgetSize(item);
+    const width = (gridWidth * item.w) / 12,
+      height = (gridHeight * item.h) / rows;
+    if (width < 250 || height < 220) return 'small';
+    if (width >= 500 && height >= (item.id === 'finance' ? 400 : 500))
+      return 'large';
+    return 'medium';
+  }
   function change(item: Placement, patch: Partial<Placement>) {
     const candidate = { ...item, ...patch };
     if (canPlace(candidate, items, definitions)) {
@@ -89,6 +101,8 @@
   class="dashboard-grid"
   class:editing
   bind:this={grid}
+  bind:clientWidth={gridWidth}
+  bind:clientHeight={gridHeight}
   style={`--rows:${rows}`}
 >
   {#each items as item (item.id)}
@@ -96,8 +110,8 @@
       class="widget"
       class:clock-panel={item.id === 'clock'}
       class:moving={active === item.id}
-      class:large={widgetSize(item) === 'large'}
-      class:small={widgetSize(item) === 'small'}
+      class:large={sizeFor(item) === 'large'}
+      class:small={sizeFor(item) === 'small'}
       style={`grid-column:${item.x + 1}/span ${item.w};grid-row:${item.y + 1}/span ${item.h};`}
       aria-label={definitions.find((d) => d.id === item.id)?.title}
     >
@@ -114,7 +128,7 @@
             >×</button
           >
         </div>{/if}
-      <Widget id={item.id} {dashboard} {now} size={widgetSize(item)} />
+      <Widget id={item.id} {dashboard} {now} size={sizeFor(item)} />
       {#if editing}<button
           class="resize-handle"
           aria-label={`Resize ${item.id}, use arrow keys`}

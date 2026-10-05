@@ -21,7 +21,9 @@ type Weather struct {
 type Sports struct {
 	League    string    `json:"league"`
 	Home      string    `json:"home"`
+	HomeCode  string    `json:"homeCode"`
 	Away      string    `json:"away"`
+	AwayCode  string    `json:"awayCode"`
 	HomeScore int       `json:"homeScore"`
 	AwayScore int       `json:"awayScore"`
 	Status    string    `json:"status"`
@@ -35,9 +37,7 @@ type Bill struct {
 	Autopay bool      `json:"autopay"`
 }
 type Finance struct {
-	Bills         []Bill  `json:"bills"`
-	MonthlyBudget float64 `json:"monthlyBudget"`
-	Spent         float64 `json:"spent"`
+	Bills []Bill `json:"bills"`
 }
 type CalendarEvent struct {
 	Title    string    `json:"title"`

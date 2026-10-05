@@ -15,6 +15,23 @@ export function initialSession(now: number): ScreenSession {
     bypassed: [],
   };
 }
+// Bills get more reading time as their due date approaches, with a firm cap.
+export function displayDuration(
+  definition: ScreenDefinition,
+  candidate: Candidate,
+): number {
+  if (candidate.id !== 'finance' || candidate.modifier <= 0)
+    return definition.maxDurationMs;
+  const duration =
+    candidate.modifier >= 35
+      ? 120000
+      : candidate.modifier >= 25
+        ? 90000
+        : candidate.modifier >= 15
+          ? 60000
+          : 45000;
+  return Math.max(definition.maxDurationMs, duration);
+}
 export function selectScreen(
   session: ScreenSession,
   candidates: Candidate[],
@@ -25,6 +42,7 @@ export function selectScreen(
   const elapsed = now - session.since;
   if (elapsed < definition.minDurationMs) return session;
   const current = candidates.find((c) => c.id === session.current)!;
+  const maximum = displayDuration(definition, current);
   const eligible = candidates
     .filter((c) => c.id !== session.current)
     .filter((c) => {
@@ -44,13 +62,13 @@ export function selectScreen(
     session.current !== 'home'
   )
     next = candidates.find((c) => c.id === 'home');
-  if (!next && elapsed < definition.maxDurationMs)
+  if (!next && elapsed < maximum)
     next = eligible.find((c) => c.modifier >= 15 && c.score > current.score);
-  if (!next && elapsed >= definition.maxDurationMs) {
+  if (!next && elapsed >= maximum) {
     next =
       session.current !== 'home'
         ? eligible.find((c) => c.id === 'home')
-        : (eligible.find((c) => c.modifier > 0) ??
+        : (eligible.find((c) => c.modifier >= 15) ??
           [...eligible].sort(
             (a, b) =>
               (session.lastShown[a.id] ?? -Infinity) -

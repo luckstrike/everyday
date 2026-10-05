@@ -27,14 +27,13 @@
   {:else}
     <div class="teams">
       <div>
-        <span class="team-mark">CHI</span><span>{data.home}</span><strong
-          >{data.status === 'scheduled' ? '—' : data.homeScore}</strong
-        >
+        <span class="team-mark">{data.homeCode}</span><span>{data.home}</span
+        ><strong>{data.status === 'scheduled' ? '—' : data.homeScore}</strong>
       </div>
       <div>
-        <span class="team-mark away">MIL</span><span>{data.away}</span><strong
-          >{data.status === 'scheduled' ? '—' : data.awayScore}</strong
-        >
+        <span class="team-mark away">{data.awayCode}</span><span
+          >{data.away}</span
+        ><strong>{data.status === 'scheduled' ? '—' : data.awayScore}</strong>
       </div>
     </div>
     <p class="quiet sports-detail">
@@ -50,8 +49,8 @@
           {data.status === 'scheduled'
             ? data.detail
             : data.status === 'final'
-              ? 'That’s a Chicago win.'
-              : 'A close one in Chicago.'}
+              ? data.detail
+              : 'A close one in Dallas.'}
         </p>
         <p class="quiet">Mock game · Scores are simulated</p>
       </div>{/if}

@@ -27,11 +27,12 @@ Use the **•••** button to open display controls. Choose **Fullscreen** (or
 ## Using the prototype
 
 - **Home** displays time, weather, the next calendar event, next bill, and next game.
-- **Weather, Sports, Finance** show larger, more detailed widgets.
-- **Automatic rotation** starts enabled. Home is the resting screen between other screens. Pause rotation to inspect a screen manually.
+- **Weather, Sports, Finance** show larger, more detailed widgets. Sports uses a Dallas Mavericks vs. San Antonio Spurs mock; Finance shows bills only, without a budget or spending summary.
+- **Automatic rotation** starts enabled. Home is the resting screen between other screens. Pause rotation to inspect a screen manually. Bill reminders receive longer visits as their due date approaches.
+- **Keep visible** in the display controls pins individual widgets across rotating screens. Pins persist in this browser independently of layouts. Unpinning restores each screen’s configured arrangement. A fullscreen severe-weather alert temporarily takes precedence over pins.
 - **Edit layout** pauses rotation and dynamic emphasis. Drag a widget’s top handle to move it; drag the bottom-right handle to resize it. Both handles support arrow keys. Widgets snap to a 12-column grid, cannot overlap, and have minimum sizes.
 - Add or remove widgets in Edit Mode. Each screen has its own layout; edits across screens remain in one draft. **Save layout** stores all four screen layouts in this browser’s local storage. **Cancel** discards the draft. **Restore this screen** resets only the current draft screen; Save makes it persistent.
-- The editor supports up to 12 rows. Larger custom layouts may scroll. On narrow phones, Display Mode stacks widgets for readability; Edit Mode keeps a horizontally scrollable grid for precise positioning.
+- The editor supports up to 12 rows. Display Mode fits the available viewport; opening controls does not extend the board. Portrait mode reflows the saved reading order into a full-width main widget and two-column supporting widgets. Narrow portrait displays use compact single-column widgets. Turning back to landscape restores the configured geometry. Edit Mode retains the canonical grid and may scroll.
 - **Simulate** opens the development scenario panel. Try rain soon, severe weather, live basketball, a starting game, a recent final score, a bill due tomorrow, a financial alert, or an event in 20 minutes. Select Normal day to clear an event immediately. Scenarios expire automatically after two minutes.
 - Scenario changes update data immediately. Automatic screen selection respects a 10-second minimum reading time. Paused rotation stays paused until resumed, including for alerts.
 
@@ -46,7 +47,7 @@ Go normalized domain state + REST endpoints
     ↓
 Frontend polling coordinator (App.svelte + lib/api.ts)
     ↓
-Pure priority calculations (lib/priority.ts)
+Bill date events (lib/bills.ts) + priority calculations (lib/priority.ts)
     ↓
 Pure screen manager (lib/screens.ts)
     ↓
@@ -75,17 +76,17 @@ Normalized attention events carry an ID, widget, kind, start, expiry, and option
 | --- | --- |
 | Weather | Rain +15, severe +60 |
 | Sports | Today +10, starting +20, live +40, recent final +20 |
-| Finance | Within a week +5, tomorrow +25, alert +40 |
+| Finance | Within a week +5, within 3 days +15, tomorrow +25, today +35, overdue/alert +40 |
 | Calendar | Today +10, within two hours +25, within 30 minutes +50 |
 
-The current mocks explicitly emit events for the selected scenario; the engine does not infer every possible event from dates yet. A future source adapter will generate those normalized events. The strongest active event per screen wins; modifiers do not accumulate. Scores decay using the supplied `now` argument, so calculation is deterministic and testable. Final-score events decay over their two-minute lifetime.
+The frontend also derives bill events from due dates using local calendar days, including midnight and DST boundaries. Bills are outstanding items in this prototype; there is no paid-state model yet, so past due dates remain overdue until the source removes them. Other sources still explicitly emit events for selected scenarios. A future source adapter will generate those normalized events. The strongest active event per screen wins; modifiers do not accumulate. Scores decay using the supplied `now` argument, so calculation is deterministic and testable. Final-score events decay over their two-minute lifetime.
 
 - Minimum duration: **10 seconds** on each screen, even when an urgent event arrives.
-- Maximum duration: **20 seconds** for Home, **25 seconds** for other screens.
+- Maximum duration: **20 seconds** for Home, **25 seconds** for other normal screens. Finance visits last **45 seconds** when a bill is within 7 days, **60 seconds** within 3 days, **90 seconds** tomorrow, and **120 seconds** today or overdue. Higher-priority events can still interrupt after minimum duration.
 - Non-Home cooldown: **65 seconds from exit**.
 - Events with a modifier of at least 15 can preempt after minimum duration if their score exceeds the current screen’s score.
 - Events with a modifier of at least 50 can bypass cooldown **once per event ID**. Maximum duration still forces a return to Home.
-- Without events, eligible screens rotate by least recently shown, then priority and ID. This prevents baseline finance priority from starving weather or sports.
+- Without significant events (modifier below 15), eligible screens rotate by least recently shown, then priority and ID. This prevents baseline finance priority and low-level week-ahead reminders from starving weather or sports.
 - If no other screen is eligible, Home remains visible.
 
 Timing belongs to screens rather than independent per-widget schedulers. A widget’s priority affects its owning screen and presentation; individual widgets do not rotate on separate timers. This keeps the first milestone deterministic and understandable.
@@ -111,10 +112,10 @@ backend/
   internal/api/              REST handlers and development simulation
 frontend/
   src/App.svelte             Polling/session coordinator and controls
-  src/lib/                   Contracts, API client, priority, screens, layout
+  src/lib/                   Contracts, API client, bill events, priority, screens, layout
   src/components/            Grid editor and widget switcher
   src/components/widgets/    Five modular, size-aware widgets
-  tests/engine.test.ts       Deterministic behavioral tests
+  tests/                     Deterministic priority, pin, and portrait tests
 scripts/dev.sh               Starts/stops both local processes
 Makefile                     Development, checks, and builds
 ```
@@ -132,7 +133,7 @@ Frontend formatting: `cd frontend && npm run format`.
 
 To inspect a production frontend, start the backend without `DASHBOARD_DEV`, build the frontend, and run `npm run preview` in `frontend/`. Open http://127.0.0.1:4173. Vite preview proxies `/api` to the same local backend. Preview is a local verification tool, not the eventual Pi deployment setup.
 
-Tests cover priority scores, exact expiration, decay, minimum and maximum durations, cooldown and urgent bypass, event clearing, all-screen rotation over a simulated hour, presentation restoration, saved-layout validation, mock date stability, endpoint validation, and development gating. Browser checks cover 1280×800 Home, editing/persistence, alert presentation, and smaller display sizes. A real one-hour fullscreen soak test is still recommended on the intended browser and display.
+Tests cover priority scores, exact expiration, decay, minimum and maximum durations, cooldown and urgent bypass, event clearing, all-screen rotation over a simulated hour, presentation restoration, saved-layout validation, mock date stability, endpoint validation, and development gating. Browser checks cover 1280×800 and 1024×600 landscape, 800×1280 and 390×844 portrait, editing/persistence, pin persistence across screens, and alert presentation. A real one-hour fullscreen soak test is still recommended on the intended browser and display.
 
 ## Next milestone
 

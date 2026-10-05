@@ -9,7 +9,14 @@ import type {
 export const modifiers: Record<string, Record<string, number>> = {
   weather: { normal: 0, rain: 15, severe: 60 },
   sports: { today: 10, starting: 20, live: 40, final: 20 },
-  finance: { week: 5, tomorrow: 25, alert: 40 },
+  finance: {
+    week: 5,
+    soon: 15,
+    tomorrow: 25,
+    today: 35,
+    overdue: 40,
+    alert: 40,
+  },
   calendar: { today: 10, upcoming: 25, soon: 50 },
 };
 export const screenFor: Record<WidgetId, ScreenId> = {

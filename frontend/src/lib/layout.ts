@@ -127,3 +127,59 @@ export function presentationLayout(
     ...others.map((item, i) => ({ ...item, x: 8, y: i * 2, w: 4, h: 2 })),
   ];
 }
+
+export const PINS_KEY = 'apartment-display.pins.v1';
+export function parsePins(raw: string): WidgetId[] {
+  const pins: unknown = JSON.parse(raw);
+  if (
+    !Array.isArray(pins) ||
+    pins.some((id) => !widgetIds.includes(id)) ||
+    new Set(pins).size !== pins.length
+  )
+    throw new Error('Invalid widget pins');
+  return pins;
+}
+
+// Pins are a display preference; never mutate saved screen geometry.
+export function pinnedLayout(
+  items: Placement[],
+  pins: WidgetId[],
+  fullscreen = false,
+): Placement[] {
+  if (fullscreen) return items.map((item) => ({ ...item }));
+  const missing = pins.filter((id) => !items.some((item) => item.id === id));
+  if (!missing.length) return items.map((item) => ({ ...item }));
+  const all = [
+    ...items,
+    ...missing.map((id) => ({ id, x: 0, y: 0, w: 4, h: 2 })),
+  ];
+  const [primary, ...others] = all;
+  return [
+    { ...primary, x: 0, y: 0, w: 8, h: 6 },
+    ...others.map((item, i) => ({ ...item, x: 8, y: i * 2, w: 4, h: 2 })),
+  ];
+}
+
+// Reflow by saved reading order into a portrait composition. The source layout survives rotation.
+export function portraitLayout(
+  items: Placement[],
+  narrow = false,
+): Placement[] {
+  const ordered = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
+  if (ordered.length <= 1)
+    return ordered.map((item) => ({ ...item, x: 0, y: 0, w: 12, h: 6 }));
+  if (narrow)
+    return ordered.map((item, i) => ({ ...item, x: 0, y: i * 2, w: 12, h: 2 }));
+  const [primary, ...rest] = ordered;
+  const height = primary.id === 'clock' ? 2 : 4;
+  return [
+    { ...primary, x: 0, y: 0, w: 12, h: height },
+    ...rest.map((item, i) => ({
+      ...item,
+      x: (i % 2) * 6,
+      y: height + Math.floor(i / 2) * 3,
+      w: 6,
+      h: 3,
+    })),
+  ];
+}

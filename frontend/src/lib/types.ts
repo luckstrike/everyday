@@ -58,7 +58,9 @@ export interface DashboardState {
   sports: {
     league: string;
     home: string;
+    homeCode: string;
     away: string;
+    awayCode: string;
     homeScore: number;
     awayScore: number;
     status: string;
@@ -67,8 +69,6 @@ export interface DashboardState {
   };
   finance: {
     bills: { name: string; amount: number; dueAt: string; autopay: boolean }[];
-    monthlyBudget: number;
-    spent: number;
   };
   calendar: {
     title: string;
