@@ -218,7 +218,7 @@ main.portrait {
   font-size: min(27cqw, 70cqh, 192px);
   line-height: 1;
   font-weight: 300;
-  letter-spacing: -0.075em;
+  letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
 }
 .clock-time small {
