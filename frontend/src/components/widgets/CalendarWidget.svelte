@@ -7,25 +7,24 @@
     now,
   }: { data: DashboardState['calendar']; size: Size; now: number } = $props();
   const events = $derived(
-    data.filter((event) => Date.parse(event.endsAt) > now),
+    data
+      .filter((e) => Date.parse(e.endsAt) > now)
+      .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)),
   );
 </script>
 
 <div class="widget-body calendar">
-  <p class="eyebrow">Up next <span>Calendar</span></p>
-  {#if events[0]}
-    <p class="event-when">
-      {day(events[0].startsAt, now)} <span>{time(events[0].startsAt)}</span>
+  <p class="eyebrow">Up next</p>
+  {#if events[0]}<p class="widget-title">{events[0].title}</p>
+    <p class="quiet accent">
+      {day(events[0].startsAt, now)} · {time(events[0].startsAt)}
     </p>
-    <p class="widget-title">{events[0].title}</p>
-    {#if size !== 'small'}<p class="quiet">{events[0].location}</p>{/if}
-    {#if size === 'large'}<div class="section-note">
-        {#each events.slice(1) as event}<p class="eyebrow">
-            {day(event.startsAt, now)} · {time(event.startsAt)}
-          </p>
-          <p class="widget-title">{event.title}</p>
-          <p class="quiet">{event.location}</p>{/each}
-      </div>{/if}
-  {:else}<p class="widget-title">Room to breathe.</p>
-    <p class="quiet">Nothing else on the calendar.</p>{/if}
+    {#if size === 'large'}<p class="quiet">{events[0].location}</p>
+      {#each events.slice(1, 3) as event}<div class="extra-event">
+          <p>{event.title}</p>
+          <small>{day(event.startsAt, now)} · {time(event.startsAt)}</small>
+        </div>{/each}{/if}{:else}<p class="widget-title">
+      A little breathing room
+    </p>
+    <p class="quiet">No upcoming events.</p>{/if}
 </div>

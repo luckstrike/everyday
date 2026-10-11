@@ -9,50 +9,21 @@
 </script>
 
 <div class="widget-body sports">
-  <p class="eyebrow">
-    Courtside <span class:live={data.status === 'live'}
-      >{data.status === 'live' ? '● Live' : data.league}</span
-    >
-  </p>
-  {#if size === 'small'}
-    <p class="widget-title">
-      {data.home} <span class="quiet">vs</span>
-      {data.away}
+  <div>
+    <p class="eyebrow">
+      Dallas basketball{#if data.status === 'live'}<span class="accent"
+          >Live</span
+        >{/if}
     </p>
-    <p class="quiet">
+    <p class="widget-title">{data.home} vs. {data.away}</p>
+  </div>
+  <div class="sports-meta">
+    <p class="accent">
       {data.status === 'scheduled'
         ? `${day(data.startsAt, now)} · ${time(data.startsAt)}`
-        : `${data.homeScore} : ${data.awayScore} · ${data.detail}`}
+        : `${data.homeScore} : ${data.awayScore}`}
     </p>
-  {:else}
-    <div class="teams">
-      <div>
-        <span class="team-mark">{data.homeCode}</span><span>{data.home}</span
-        ><strong>{data.status === 'scheduled' ? '—' : data.homeScore}</strong>
-      </div>
-      <div>
-        <span class="team-mark away">{data.awayCode}</span><span
-          >{data.away}</span
-        ><strong>{data.status === 'scheduled' ? '—' : data.awayScore}</strong>
-      </div>
-    </div>
-    <p class="quiet sports-detail">
-      {data.status === 'scheduled'
-        ? `${day(data.startsAt, now)} · ${time(data.startsAt)}`
-        : data.detail}
-    </p>
-    {#if size === 'large'}<div class="section-note">
-        <p class="eyebrow">
-          {data.status === 'scheduled' ? 'Next tip-off' : 'Game status'}
-        </p>
-        <p class="widget-title">
-          {data.status === 'scheduled'
-            ? data.detail
-            : data.status === 'final'
-              ? data.detail
-              : 'A close one in Dallas.'}
-        </p>
-        <p class="quiet">Mock game · Scores are simulated</p>
-      </div>{/if}
-  {/if}
+    <p class="quiet">{data.detail}</p>
+  </div>
+  {#if size === 'large'}<p class="quiet">{data.league} · Mock game</p>{/if}
 </div>

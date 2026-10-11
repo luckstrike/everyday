@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { Candidate } from '../lib/priority.ts';
   import Widget from './Widget.svelte';
-  import { canPlace, widgetSize } from '../lib/layout.ts';
+  import Icon from './Icon.svelte';
+  import { canPlace, GRID, overlaps } from '../lib/boards.ts';
   import type {
     DashboardState,
     Placement,
@@ -17,6 +19,10 @@
     definitions,
     onchange,
     attention,
+    previews = [],
+    pendingId = null,
+    onplace,
+    onselect,
   }: {
     items: Placement[];
     dashboard: DashboardState;
@@ -25,69 +31,75 @@
     definitions: WidgetDefinition[];
     onchange: (items: Placement[]) => void;
     attention?: Candidate;
+    previews?: Placement[];
+    pendingId?: WidgetId | null;
+    onplace: (item: Placement) => void;
+    onselect: (item: Placement) => void;
   } = $props();
   let grid: HTMLDivElement;
   let gridWidth = $state(1280),
     gridHeight = $state(800);
-  let active = $state<WidgetId | null>(null);
   let feedback = $state('');
-  const rows = $derived(Math.max(6, ...items.map((item) => item.y + item.h)));
+  let cleanup = () => {};
+  let dragged = false;
+  const hints = $derived.by(() => {
+    const result: Placement[] = [];
+    for (const item of previews)
+      if (!result.some((other) => overlaps(item, other))) result.push(item);
+    return result;
+  });
   function sizeFor(item: Placement): Size {
-    if (editing) return widgetSize(item);
-    const gap = grid ? parseFloat(getComputedStyle(grid).columnGap) : 16;
-    const width =
-      ((gridWidth - gap * 11) * item.w) / 12 + gap * (item.w - 1) - 2;
-    const height =
-      ((gridHeight - gap * (rows - 1)) * item.h) / rows +
-      gap * (item.h - 1) -
-      2;
-    if (item.id === 'discover' && (width < 320 || height < 280)) return 'small';
-    if (width < 250 || height < 220) return 'small';
-    if (width >= 500 && height >= (item.id === 'finance' ? 400 : 500))
-      return 'large';
-    return 'medium';
+    const width = (gridWidth * item.w) / GRID;
+    const height = (gridHeight * item.h) / GRID;
+    return width > 500 && height > 360
+      ? 'large'
+      : width > 260 && height > 180
+        ? 'medium'
+        : 'small';
   }
   function change(item: Placement, patch: Partial<Placement>) {
     const candidate = { ...item, ...patch };
     if (canPlace(candidate, items, definitions)) {
       onchange(items.map((p) => (p.id === item.id ? candidate : p)));
       feedback = '';
-    } else feedback = 'That space is occupied or outside the grid.';
+    } else feedback = 'That position is occupied or outside the board.';
   }
-  function pointer(event: PointerEvent, item: Placement, resize = false) {
+  function pointer(event: PointerEvent, item: Placement) {
     if (event.button !== 0) return;
-    event.preventDefault();
+    cleanup();
     const button = event.currentTarget as HTMLButtonElement;
     button.setPointerCapture(event.pointerId);
     const rect = grid.getBoundingClientRect(),
       startX = event.clientX,
       startY = event.clientY;
-    const gap = parseFloat(getComputedStyle(grid).columnGap);
-    const column = (rect.width + gap) / 12,
-      row = (rect.height + gap) / rows;
-    const origin = { ...item };
-    active = item.id;
+    const original = items.map((p) => ({ ...p }));
+    dragged = false;
     const move = (e: PointerEvent) => {
-      const dx = Math.round((e.clientX - startX) / column),
-        dy = Math.round((e.clientY - startY) / row);
-      change(
-        origin,
-        resize
-          ? { w: origin.w + dx, h: origin.h + dy }
-          : { x: origin.x + dx, y: origin.y + dy },
-      );
+      const dx = Math.round((e.clientX - startX) / (rect.width / GRID)),
+        dy = Math.round((e.clientY - startY) / (rect.height / GRID));
+      if (dx || dy) {
+        dragged = true;
+        change(item, { x: item.x + dx, y: item.y + dy });
+      }
     };
-    const end = () => {
-      active = null;
+    const end = (e: PointerEvent) => {
+      if (e.type === 'pointercancel' || e.type === 'lostpointercapture')
+        onchange(original);
+      cleanup();
+    };
+    cleanup = () => {
       button.removeEventListener('pointermove', move);
       button.removeEventListener('pointerup', end);
       button.removeEventListener('pointercancel', end);
+      button.removeEventListener('lostpointercapture', end);
+      cleanup = () => {};
     };
     button.addEventListener('pointermove', move);
     button.addEventListener('pointerup', end);
     button.addEventListener('pointercancel', end);
+    button.addEventListener('lostpointercapture', end);
   }
-  function keyboard(event: KeyboardEvent, item: Placement, resize = false) {
+  function keyboard(event: KeyboardEvent, item: Placement) {
     const delta: Record<string, [number, number]> = {
       ArrowLeft: [-1, 0],
       ArrowRight: [1, 0],
@@ -95,63 +107,59 @@
       ArrowDown: [0, 1],
     };
     const d = delta[event.key];
-    if (!d) return;
-    event.preventDefault();
-    change(
-      item,
-      resize
-        ? { w: item.w + d[0], h: item.h + d[1] }
-        : { x: item.x + d[0], y: item.y + d[1] },
-    );
+    if (d) {
+      event.preventDefault();
+      change(item, { x: item.x + d[0], y: item.y + d[1] });
+    }
   }
+  const position = (item: Placement) =>
+    `grid-column:${item.x + 1}/span ${item.w};grid-row:${item.y + 1}/span ${item.h};`;
+  onDestroy(() => cleanup());
 </script>
 
 <div
   class="dashboard-grid"
   class:editing
+  class:placing={!!pendingId}
   bind:this={grid}
   bind:clientWidth={gridWidth}
   bind:clientHeight={gridHeight}
-  style={`--rows:${rows}`}
 >
-  {#each items as item (item.id)}
-    <section
+  {#each items as item (item.id)}<section
       class="widget"
-      class:clock-panel={item.id === 'clock'}
-      class:moving={active === item.id}
+      class:discovery-panel={item.id === 'discover'}
+      class:pending={pendingId === item.id}
       class:emphasized={!editing && attention?.widget === item.id}
-      class:large={sizeFor(item) === 'large'}
       class:small={sizeFor(item) === 'small'}
-      style={`grid-column:${item.x + 1}/span ${item.w};grid-row:${item.y + 1}/span ${item.h};`}
+      style={position(item)}
       aria-label={definitions.find((d) => d.id === item.id)?.title}
     >
-      {#if editing}<div class="edit-handles">
-          <button
-            class="move-handle"
-            aria-label={`Move ${item.id}, use arrow keys`}
-            onpointerdown={(e) => pointer(e, item)}
-            onkeydown={(e) => keyboard(e, item)}
-            >⠿ {item.id} <small>{item.w} × {item.h}</small></button
-          ><button
-            aria-label={`Remove ${item.id}`}
-            onclick={() => onchange(items.filter((p) => p.id !== item.id))}
-            >×</button
-          >
-        </div>{/if}
       <Widget id={item.id} {dashboard} {now} size={sizeFor(item)} />
       {#if editing}<button
-          class="resize-handle"
-          aria-label={`Resize ${item.id}, use arrow keys`}
-          onpointerdown={(e) => pointer(e, item, true)}
-          onkeydown={(e) => keyboard(e, item, true)}>↘</button
+          class="move-handle icon-button"
+          aria-label={`Edit ${item.id}, drag or use arrow keys to move`}
+          onpointerdown={(e) => pointer(e, item)}
+          onkeydown={(e) => keyboard(e, item)}
+          onclick={() => {
+            if (!dragged) onselect(item);
+            dragged = false;
+          }}><Icon name="grip" size={18} /></button
         >{/if}
-    </section>
-  {/each}
-  {#if items.length === 0}<p class="empty-grid">
-      This screen is empty. Open Edit layout to add a widget.
-    </p>{/if}
+    </section>{/each}
+  {#each hints as item}<button
+      class="placement-preview"
+      style={position(item)}
+      aria-label={`Place ${item.id} at column ${item.x + 1}, row ${item.y + 1}`}
+      onclick={() => onplace(item)}
+      ><Icon name="plus" /><span>Place here</span></button
+    >{/each}
+  {#if !items.length && !pendingId}<div class="empty-board">
+      <p>A little room for your day.</p>
+      <span>Tap Add widget to start this board.</span>
+    </div>{/if}
 </div>
-{#if editing}<p class="edit-help" role="status">
-    {feedback ||
-      'Drag handles to move or resize. Focus a handle and use arrow keys for precise adjustments. Occupied cells are protected.'}
-  </p>{/if}
+<span class="sr-only" role="status"
+  >{feedback}{pendingId && previews.length
+    ? ` ${hints.length} available placement areas.`
+    : ''}</span
+>

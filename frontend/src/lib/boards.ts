@@ -92,8 +92,8 @@ export function validPositions(
   orientation: Orientation,
   items: Placement[],
   definitions: WidgetDefinition[],
+  shape = footprint(id, size, orientation),
 ): Placement[] {
-  const shape = footprint(id, size, orientation);
   const result: Placement[] = [];
   for (let y = 0; y <= GRID - shape.h; y++)
     for (let x = 0; x <= GRID - shape.w; x++) {

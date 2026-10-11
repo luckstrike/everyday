@@ -31,7 +31,7 @@ func TestDailyForecastAndLocalSamples(t *testing.T) {
 		t.Fatal("missing forecast or local event samples")
 	}
 	for i, day := range state.Weather.Daily {
-		if !day.Date.Equal(anchor.AddDate(0, 0, i+1)) || day.High < day.Low {
+		if !day.Date.Equal(anchor.AddDate(0, 0, i)) || day.High < day.Low {
 			t.Fatal("invalid daily forecast")
 		}
 	}

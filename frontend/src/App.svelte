@@ -1,47 +1,56 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import DashboardGrid from './components/DashboardGrid.svelte';
+  import WidgetPicker from './components/WidgetPicker.svelte';
+  import Icon from './components/Icon.svelte';
   import { getConfig, getState, getWidgets, simulate } from './lib/api.ts';
   import {
-    addWidget,
-    defaultLayouts,
-    upgradeLayouts,
-    parseLayouts,
-    boardLayout,
-    STORAGE_KEY,
-    PINS_KEY,
-    parsePins,
-    pinnedLayout,
-    portraitLayout,
-  } from './lib/layout.ts';
+    BOARDS_KEY,
+    initialBoards,
+    migrateLayouts,
+    parseBoards,
+    validPositions,
+    footprint,
+    type BoardStore,
+    type Orientation,
+  } from './lib/boards.ts';
   import { billEvents } from './lib/bills.ts';
   import { rankScreens } from './lib/priority.ts';
   import type {
     Config,
     DashboardState,
-    Layouts,
     Placement,
-    ScreenId,
+    Size,
     WidgetDefinition,
     WidgetId,
   } from './lib/types.ts';
-  let pins = $state<WidgetId[]>([]);
-  let portrait = $state(false),
-    narrow = $state(false);
+  let store = $state<BoardStore>(initialBoards());
+  let orientation = $state<Orientation>('landscape');
   let dashboard = $state<DashboardState | null>(null),
     config = $state<Config | null>(null),
     definitions = $state<WidgetDefinition[]>([]);
-  let now = $state(Date.now());
-  let currentScreen = $state<ScreenId>('home');
-  let layouts = $state<Layouts>(defaultLayouts()),
-    draft = $state<Layouts>(defaultLayouts());
+  let now = $state(Date.now()),
+    lastSuccess = $state(0);
   let editing = $state(false),
-    controls = $state(false),
+    picker = $state(false),
+    boardMenu = $state(false),
+    creating = $state(false),
     devPanel = $state(false),
     busy = $state(false);
-  let error = $state(''),
-    notice = $state(''),
-    lastSuccess = $state(0);
+  let draft = $state<Placement[]>([]),
+    editOrientation = $state<Orientation>('landscape');
+  let pending = $state<{
+    id: WidgetId;
+    size: Size;
+    w: number;
+    h: number;
+    existing: boolean;
+  } | null>(null);
+  let name = $state(''),
+    error = $state(''),
+    notice = $state('');
+  const board = $derived(store.boards.find((b) => b.id === store.activeId)!);
+  const saved = $derived(board.layouts[orientation]);
   const ranks = $derived(
     config
       ? rankScreens(
@@ -56,25 +65,47 @@
       : [],
   );
   const attention = $derived(
-    ranks.find((candidate) => candidate.modifier >= 15),
-  );
-  const projected = $derived(
-    pinnedLayout(
-      boardLayout(layouts[currentScreen], attention),
-      pins,
-      attention?.presentation === 'FULLSCREEN',
-    ),
+    ranks.find((c) => c.presentation === 'FULLSCREEN') ??
+      ranks.find(
+        (c) => c.modifier >= 15 && saved.some((p) => p.id === c.widget),
+      ),
   );
   const visible = $derived(
     editing
-      ? draft[currentScreen]
-      : portrait
-        ? portraitLayout(projected, narrow)
-        : projected,
+      ? draft
+      : attention?.presentation === 'FULLSCREEN' && attention.widget
+        ? [{ id: attention.widget, x: 0, y: 0, w: 24, h: 24 }]
+        : saved,
   );
-  const currentTitle = $derived(
-    config?.screens.find((s) => s.id === currentScreen)?.title ?? 'Home',
+  const available = $derived(
+    pending
+      ? validPositions(
+          pending.id,
+          pending.size,
+          editOrientation,
+          draft.filter((p) => p.id !== pending?.id),
+          definitions,
+          { w: pending.w, h: pending.h },
+        )
+      : [],
   );
+  const fits = $derived.by(() => {
+    const result = { small: false, medium: false, large: false };
+    if (pending)
+      for (const size of ['small', 'medium', 'large'] as Size[])
+        result[size] =
+          validPositions(
+            pending.id,
+            size,
+            editOrientation,
+            draft.filter((p) => p.id !== pending?.id),
+            definitions,
+            size === pending.size
+              ? { w: pending.w, h: pending.h }
+              : footprint(pending.id, size, editOrientation),
+          ).length > 0;
+    return result;
+  });
   const stale = $derived(lastSuccess > 0 && now - lastSuccess > 15000);
   const scenarios = [
     ['normal', 'Normal day'],
@@ -82,9 +113,9 @@
     ['severe', 'Severe weather'],
     ['starting', 'Game starting soon'],
     ['live', 'Live basketball'],
-    ['final', 'Recent final score'],
+    ['final', 'Final score'],
     ['bill', 'Bill due tomorrow'],
-    ['financial', 'Financial alert'],
+    ['financial', 'Bill alert'],
     ['calendar', 'Event in 20 minutes'],
   ];
   async function refresh() {
@@ -94,35 +125,32 @@
           getConfig(),
           getWidgets(),
         ]);
-        config = settings;
         definitions = widgets;
+        config = settings;
         try {
-          const saved = localStorage.getItem(STORAGE_KEY);
-          if (saved) layouts = upgradeLayouts(parseLayouts(saved, widgets));
+          const raw = localStorage.getItem(BOARDS_KEY),
+            legacy = localStorage.getItem('apartment-display.layouts.v1');
+          if (raw) store = parseBoards(raw, widgets);
+          else if (legacy) store = migrateLayouts(legacy, widgets);
         } catch {
-          notice = 'Saved layout could not be loaded. Using defaults.';
+          notice =
+            'Saved boards could not be loaded. Using Everyday; your saved data has been retained.';
         }
       }
       dashboard = await getState();
       lastSuccess = Date.now();
       error = '';
     } catch {
-      error = 'Cannot reach the dashboard API. Retrying automatically.';
+      error = 'Connection interrupted. Retrying automatically.';
     }
   }
   onMount(() => {
     const resize = () => {
-      portrait = window.innerHeight > window.innerWidth;
-      narrow = window.innerWidth < 500;
+      orientation =
+        window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
     };
     resize();
     window.addEventListener('resize', resize);
-    try {
-      const saved = localStorage.getItem(PINS_KEY);
-      if (saved) pins = parsePins(saved);
-    } catch {
-      notice = 'Saved pins could not be loaded.';
-    }
     let stopped = false,
       timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
@@ -130,64 +158,132 @@
       if (!stopped) timer = setTimeout(poll, config?.pollIntervalMs ?? 5000);
     };
     void poll();
-    const tick = setInterval(() => {
-      now = Date.now();
-    }, 1000);
+    const clock = setInterval(() => (now = Date.now()), 1000);
+    const leave = (event: BeforeUnloadEvent) => {
+      if (editing) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', leave);
     return () => {
-      window.removeEventListener('resize', resize);
       stopped = true;
       clearTimeout(timer);
-      clearInterval(tick);
+      clearInterval(clock);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('beforeunload', leave);
     };
   });
-  function choose(id: ScreenId) {
-    currentScreen = id;
-  }
-
-  function togglePin(id: WidgetId) {
-    const next = pins.includes(id)
-      ? pins.filter((pin) => pin !== id)
-      : [...pins, id];
+  function persist(next: BoardStore): boolean {
     try {
-      localStorage.setItem(PINS_KEY, JSON.stringify(next));
-      pins = next;
+      localStorage.setItem(BOARDS_KEY, JSON.stringify(next));
+      store = next;
       notice = '';
-    } catch {
-      notice = 'Could not save pins. Browser storage is unavailable.';
-    }
-  }
-  function beginEdit() {
-    draft = structuredClone($state.snapshot(layouts));
-    editing = true;
-    notice = '';
-  }
-  function save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-      layouts = structuredClone($state.snapshot(draft));
-      editing = false;
-      notice = 'Layout saved on this browser.';
+      return true;
     } catch {
       notice =
         'Could not save. Browser storage is unavailable; your edits are still here.';
+      return false;
     }
+  }
+  function beginEdit(showPicker = true) {
+    if (!editing) {
+      draft = saved.map((p) => ({ ...p }));
+      editOrientation = orientation;
+      editing = true;
+    }
+    boardMenu = false;
+    devPanel = false;
+    picker = showPicker;
+    pending = null;
+    notice = '';
+    if (showPicker) void focusPicker();
+  }
+  async function focusPicker() {
+    await tick();
+    (document.querySelector('.widget-picker') as HTMLElement | null)?.focus();
+  }
+  function closePicker() {
+    picker = false;
+    pending = null;
+    void tick().then(() =>
+      (document.querySelector('.add-widget') as HTMLButtonElement)?.focus(),
+    );
   }
   function cancel() {
     editing = false;
-    notice = 'Changes discarded.';
+    closePicker();
+    notice = '';
   }
-  function update(items: Placement[]) {
-    draft = { ...draft, [currentScreen]: items };
+  function save() {
+    const next: BoardStore = {
+      ...store,
+      boards: store.boards.map((b) =>
+        b.id === board.id
+          ? {
+              ...b,
+              layouts: {
+                ...b.layouts,
+                [editOrientation]: draft.map((p) => ({ ...p })),
+              },
+            }
+          : b,
+      ),
+    };
+    if (persist(next)) {
+      editing = false;
+      closePicker();
+      notice = 'Layout saved.';
+    }
   }
-  function add(id: WidgetId) {
-    const definition = definitions.find((d) => d.id === id)!;
-    const next = addWidget(draft[currentScreen], definition);
-    if (next) {
-      update(next);
-      notice = '';
-    } else
-      notice =
-        'No room in the 12 × 12 grid. Remove or shrink another widget first.';
+  function chooseWidget(id: WidgetId) {
+    pending = {
+      id,
+      size: 'small',
+      ...footprint(id, 'small', editOrientation),
+      existing: false,
+    };
+  }
+  function editWidget(item: Placement) {
+    pending = { ...item, size: 'small', existing: true };
+    picker = true;
+    void focusPicker();
+  }
+  function sizeWidget(size: Size) {
+    if (pending)
+      pending = {
+        ...pending,
+        size,
+        ...footprint(pending.id, size, editOrientation),
+      };
+  }
+  function place(item: Placement) {
+    draft = [...draft.filter((p) => p.id !== item.id), { ...item }];
+    pending = null;
+    picker = false;
+  }
+  function chooseBoard(id: string) {
+    if (!editing && persist({ ...store, activeId: id })) {
+      boardMenu = false;
+      creating = false;
+    }
+  }
+  function createBoard(event: SubmitEvent) {
+    event.preventDefault();
+    const value = name.trim();
+    if (!value || store.boards.length >= 50) return;
+    const next = {
+      id: crypto.randomUUID(),
+      name: value,
+      layouts: { landscape: [], portrait: [] },
+    };
+    if (
+      persist({ ...store, activeId: next.id, boards: [...store.boards, next] })
+    ) {
+      name = '';
+      creating = false;
+      beginEdit();
+    }
   }
   async function scenario(value: string) {
     busy = true;
@@ -196,8 +292,8 @@
       lastSuccess = Date.now();
       error = '';
     } catch {
-      error =
-        'Simulation could not be applied. Check that the backend uses DASHBOARD_DEV=1.';
+      notice =
+        'Simulation unavailable. Start the backend with DASHBOARD_DEV=1.';
     } finally {
       busy = false;
     }
@@ -205,162 +301,198 @@
   async function fullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
-      else {
-        await document.documentElement.requestFullscreen();
-        controls = false;
-        devPanel = false;
-        window.scrollTo(0, 0);
-      }
+      else await document.documentElement.requestFullscreen();
+      boardMenu = false;
     } catch {
       notice = 'Use your browser’s fullscreen command to fill the display.';
     }
   }
+  function escape(event: KeyboardEvent) {
+    if (event.key !== 'Escape') return;
+    if (pending) pending = null;
+    else if (picker) closePicker();
+    else {
+      boardMenu = false;
+      devPanel = false;
+    }
+  }
 </script>
 
-<svelte:head><title>{currentTitle} · Apartment</title></svelte:head>
-<main class:display-mode={!editing} class:portrait>
+<svelte:head><title>{board.name} · Apartment</title></svelte:head>
+<svelte:window
+  onkeydown={escape}
+  onclick={(e) => {
+    if (!(e.target as HTMLElement).closest('.board-selector')) {
+      boardMenu = false;
+      creating = false;
+    }
+  }}
+/>
+<main
+  class:portrait={editing
+    ? editOrientation === 'portrait'
+    : orientation === 'portrait'}
+  class:editing
+>
   <header class="display-header">
-    <div class="wordmark">
-      <span class="brand-symbol" aria-hidden="true">⌂</span> Apartment
-      <span class="header-divider">/</span>
-      <span class="screen-name">{currentTitle}</span>
-    </div>
-    <div class="header-status">
-      <span class="status-dot" class:offline={stale || !!error}></span><span
-        >{stale ? 'Data delayed' : 'Local display'}</span
-      ><span class="mock-label">MOCK DATA</span><button
-        class="settings-button"
-        aria-label="Display controls"
-        aria-expanded={controls}
-        onclick={() => (controls = !controls)}>•••</button
-      >
-    </div>
+    {#if editing}<div class="editor-title">
+        <h1>Edit {board.name}</h1>
+        <span class="quiet"
+          >{pending
+            ? 'Tap a highlighted position'
+            : 'Choose a widget to preview its position'}<small
+            >{editOrientation} layout</small
+          ></span
+        >
+      </div>
+      <div class="editor-actions">
+        <button onclick={cancel}>Cancel</button><button
+          class="primary"
+          onclick={save}>Save layout</button
+        >
+      </div>
+    {:else}<div class="board-selector">
+        <button
+          class="board-trigger"
+          aria-expanded={boardMenu}
+          aria-controls="board-menu"
+          onclick={() => {
+            boardMenu = !boardMenu;
+            devPanel = false;
+          }}>{board.name}<Icon name="down" size={16} /></button
+        >
+        {#if boardMenu}<div id="board-menu" class="board-menu popover">
+            <p class="eyebrow">Your boards</p>
+            <div class="board-list">
+              {#each store.boards as b}<button
+                  class:current={board.id === b.id}
+                  onclick={() => chooseBoard(b.id)}
+                  ><span
+                    >{b.name}<small
+                      >{b.layouts[orientation].length} widgets</small
+                    ></span
+                  >{#if board.id === b.id}<Icon
+                      name="check"
+                      size={18}
+                    />{/if}</button
+                >{/each}
+            </div>
+            {#if creating}<form onsubmit={createBoard}>
+                <label for="board-name">Board name</label><input
+                  id="board-name"
+                  bind:value={name}
+                  maxlength="40"
+                  required
+                  placeholder="e.g. A quiet morning"
+                /><button class="primary" type="submit" disabled={!name.trim()}
+                  >Create board</button
+                >
+              </form>{:else}<button
+                disabled={store.boards.length >= 50}
+                onclick={() => {
+                  creating = true;
+                  void tick().then(() =>
+                    document.getElementById('board-name')?.focus(),
+                  );
+                }}><Icon name="plus" size={18} />Create board</button
+              >{/if}
+            <div class="board-menu-tools">
+              <button onclick={() => beginEdit(false)}>Edit layout</button
+              ><button onclick={fullscreen}>Fullscreen</button
+              >{#if import.meta.env.DEV && config?.development}<button
+                  onclick={() => {
+                    devPanel = true;
+                    boardMenu = false;
+                  }}>Simulate</button
+                >{/if}
+            </div>
+            <p class="menu-footnote">
+              Boards switch only when you choose.<br />Each board fits on one
+              screen.
+            </p>
+          </div>{/if}
+      </div>
+      <span class="header-location"
+        >{dashboard?.weather.location ?? 'Dallas, TX'}</span
+      >{/if}
   </header>
-  {#if controls || editing}
-    <nav class="control-bar" aria-label="Display controls">
-      <div class="screen-buttons">
-        {#each config?.screens ?? [] as screen}<button
-            class:selected={currentScreen === screen.id}
-            onclick={() => choose(screen.id)}>{screen.title}</button
-          >{/each}
-      </div>
-      <div class="control-actions">
-        {#if !editing}<button onclick={beginEdit} disabled={!dashboard}
-            >Edit layout</button
-          ><button onclick={fullscreen}>Fullscreen</button
-          >{#if import.meta.env.DEV && config?.development}<button
-              class:selected={devPanel}
-              onclick={() => (devPanel = !devPanel)}>Simulate</button
-            >{/if}{:else}<button
-            onclick={() => {
-              draft = {
-                ...draft,
-                [currentScreen]: defaultLayouts()[currentScreen],
-              };
-            }}>Restore this screen</button
-          ><button onclick={cancel}>Cancel</button><button
-            class="primary"
-            onclick={save}>Save layout</button
-          >{/if}
-      </div>
-      {#if !editing}
-        <div class="pin-controls">
-          <span class="eyebrow">Keep visible</span>
-          {#each definitions as widget}<button
-              aria-pressed={pins.includes(widget.id)}
-              class:selected={pins.includes(widget.id)}
-              onclick={() => togglePin(widget.id)}
-              >{pins.includes(widget.id)
-                ? 'Pinned: '
-                : 'Pin '}{widget.title}</button
-            >{/each}
-          <p>
-            Pinned widgets stay across screens. Fullscreen alerts temporarily
-            take precedence.
-          </p>
-        </div>
-      {/if}
-    </nav>
-  {/if}
-  {#if editing}<div class="editor-toolbar">
-      <span class="eyebrow">Edit layout · {currentTitle}</span><label
-        >Add widget <select
-          aria-label="Add widget"
-          value=""
-          onchange={(e) => {
-            if (e.currentTarget.value) add(e.currentTarget.value as WidgetId);
-            e.currentTarget.value = '';
-          }}
-          ><option value="">Choose a widget…</option
-          >{#each definitions.filter((d) => !draft[currentScreen].some((p) => p.id === d.id)) as widget}<option
-              value={widget.id}>{widget.title}</option
-            >{/each}</select
-        ></label
-      >
-    </div>{/if}
-  {#if error}<p class="connection-message" role="status">
-      {error}{dashboard
-        ? ' Showing the last received data.'
-        : ' Start the Go backend on port 8080.'}
-    </p>{/if}
-  {#if notice && (controls || editing)}<p class="notice" role="status">
-      {notice}
-    </p>{/if}
-  {#if dashboard}
-    {#if !editing && attention}<div
-        class="attention-banner"
-        class:severe={attention?.presentation === 'FULLSCREEN'}
-      >
-        <span
-          >{attention?.presentation === 'FULLSCREEN'
-            ? 'Weather alert'
-            : attention?.widget === 'calendar'
-              ? 'Coming up soon'
-              : attention?.widget === 'finance'
-                ? 'A financial reminder'
-                : 'Worth a look'}</span
-        ><span>Mock data · attention needed</span>
-      </div>{/if}
-    <div class="board-slot">
-      {#key currentScreen}<DashboardGrid
+  <div class="board-slot">
+    {#if dashboard}{#key `${board.id}:${editing ? editOrientation : orientation}`}<DashboardGrid
           items={visible}
           {dashboard}
           {now}
           {editing}
           {definitions}
           {attention}
-          onchange={update}
+          previews={available}
+          pendingId={pending?.id ?? null}
+          onchange={(items) => {
+            draft = items;
+            pending = null;
+          }}
+          onplace={place}
+          onselect={editWidget}
         />{/key}
-    </div>
-  {:else}<div class="loading">
-      <p class="eyebrow">Apartment display</p>
-      <h1>Getting your day ready.</h1>
-      <p class="quiet">Connecting to your local dashboard…</p>
-    </div>{/if}
+    {:else}<div class="loading">
+        <h1>Getting your day ready.</h1>
+        <p class="quiet">{error || 'Connecting to your local dashboard…'}</p>
+      </div>{/if}
+  </div>
   <footer>
-    <div class="screen-indicators" aria-label="Current screen">
-      <span class="rotation-label"
-        >{editing ? 'Editing layout' : 'Your board'}{pins.length
-          ? ` · ${pins.length} pinned`
-          : ''}</span
-      >
-    </div>
     <span
-      >{new Date(now).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      })} <span class="footer-separator">·</span>
-      {new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' })
-        .formatToParts(now)
-        .find((p) => p.type === 'timeZoneName')?.value}</span
+      >{error
+        ? `${error}${dashboard ? ' Showing last received data.' : ''}`
+        : stale
+          ? 'Data delayed · showing last received data'
+          : dashboard?.mock
+            ? 'Mock data'
+            : 'Local display'}</span
+    ><button
+      class="add-widget"
+      class:picker-open={picker}
+      disabled={!dashboard}
+      onclick={() => (picker ? closePicker() : beginEdit())}
+      ><Icon name={picker ? 'close' : 'plus'} size={20} />{picker
+        ? 'Close picker'
+        : 'Add widget'}</button
     >
   </footer>
-  {#if import.meta.env.DEV && devPanel && config?.development}
-    <aside class="dev-panel" aria-label="Development simulations">
-      <div>
-        <p class="eyebrow">Development · Scenario lab</p>
-        <p>Events expire after 2 minutes. Highlights stay on this board.</p>
+  {#if notice}<div class="toast" role="status">
+      {notice}<button
+        class="icon-button"
+        aria-label="Dismiss notice"
+        onclick={() => (notice = '')}><Icon name="close" size={16} /></button
+      >
+    </div>{/if}
+  {#if picker}<WidgetPicker
+      items={draft}
+      selected={pending?.id ?? null}
+      size={pending?.size ?? 'small'}
+      existing={pending?.existing ?? false}
+      {fits}
+      onchoose={chooseWidget}
+      onsize={sizeWidget}
+      onclose={closePicker}
+      onback={() => (pending = null)}
+      onremove={() => {
+        if (pending) draft = draft.filter((p) => p.id !== pending?.id);
+        pending = null;
+        picker = false;
+      }}
+    />{/if}
+  {#if devPanel}<aside
+      class="dev-panel popover"
+      aria-label="Development simulations"
+    >
+      <div class="popover-heading">
+        <h2>Scenario lab</h2>
+        <button
+          class="icon-button"
+          aria-label="Close simulations"
+          onclick={() => (devPanel = false)}><Icon name="close" /></button
+        >
       </div>
+      <p class="quiet">Mock events expire after 2 minutes. Boards stay put.</p>
       <div class="scenario-buttons">
         {#each scenarios as [value, label]}<button
             disabled={busy}
@@ -368,12 +500,5 @@
             onclick={() => scenario(value)}>{label}</button
           >{/each}
       </div>
-      <div class="priority-debug">
-        {#each ranks as rank}<span
-            >{rank.id} <strong>{Math.round(rank.score)}</strong>
-            {rank.presentation.toLowerCase()}</span
-          >{/each}
-      </div>
-    </aside>
-  {/if}
+    </aside>{/if}
 </main>

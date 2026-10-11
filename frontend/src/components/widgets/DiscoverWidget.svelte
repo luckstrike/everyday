@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DashboardState, Size } from '../../lib/types.ts';
   import { day, time } from '../../lib/format.ts';
+  import Icon from '../Icon.svelte';
   let {
     data,
     size,
@@ -8,33 +9,29 @@
   }: { data: DashboardState['localEvents']; size: Size; now: number } =
     $props();
   let index = $state(0);
-  const upcoming = $derived(
-    data.filter((event) => Date.parse(event.startsAt) > now),
-  );
+  const upcoming = $derived(data.filter((e) => Date.parse(e.startsAt) > now));
   const event = $derived(upcoming[index % (upcoming.length || 1)]);
 </script>
 
 <div class="widget-body discover">
-  <p class="eyebrow">Around Dallas <span>Sample picks</span></p>
-  {#if event}
-    <p class="discovery-date">
-      {day(event.startsAt, now)}{#if size !== 'small'}
-        · {time(event.startsAt)}
-      {/if}
-    </p>
-    <p class="widget-title">{event.title}</p>
-    <p class="quiet discovery-venue">{event.venue}</p>
-    {#if size !== 'small'}<p class="quiet discovery-price">
-        {event.price}
-      </p>{/if}
-    {#if size === 'large'}<p class="discovery-reason">{event.reason}</p>{/if}
-    <div class="discovery-controls">
-      <span>{(index % upcoming.length) + 1} / {upcoming.length} · Samples</span
-      ><button
+  <p class="eyebrow accent">Around Dallas<span>Sample pick</span></p>
+  {#if event}<div class="discovery-title">
+      <p class="widget-title">{event.title}</p>
+      <button
+        class="icon-button"
         aria-label="Next event recommendation"
-        onclick={() => (index = (index + 1) % upcoming.length)}>Next →</button
+        disabled={upcoming.length < 2}
+        onclick={() => (index = (index + 1) % upcoming.length)}
+        ><Icon name="arrow" size={20} /></button
       >
     </div>
-  {:else}<p class="widget-title">More to come</p>
+    <div class="discovery-details quiet">
+      <span>{day(event.startsAt, now)} · {time(event.startsAt)}</span><span
+        >{event.venue}</span
+      ><span class="accent">{event.price}</span>
+    </div>
+    {#if size === 'large'}<p class="quiet discovery-reason">
+        {event.reason}
+      </p>{/if}{:else}<p class="widget-title">More to come</p>
     <p class="quiet">No upcoming sample events.</p>{/if}
 </div>

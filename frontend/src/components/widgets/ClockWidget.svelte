@@ -1,28 +1,37 @@
 <script lang="ts">
   import type { Size } from '../../lib/types.ts';
   let { now, size }: { now: number; size: Size } = $props();
-  const date = $derived(new Date(now));
-</script>
-
-<div class="clock widget-body" class:compact={size === 'small'}>
-  <p class="eyebrow">{date.toLocaleDateString('en-US', { weekday: 'long' })}</p>
-  <div class="clock-time">
-    {date.toLocaleTimeString('en-US', {
+  const parts = $derived(
+    new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: false,
-    })}<span class="seconds"
-      >{date
-        .toLocaleTimeString('en-US', { second: '2-digit' })
-        .padStart(2, '0')}</span
+      hour12: true,
+    }).formatToParts(now),
+  );
+  const clock = $derived(
+    parts
+      .filter(
+        (p) =>
+          (p.type !== 'dayPeriod' && p.type !== 'literal') || p.value === ':',
+      )
+      .map((p) => p.value)
+      .join(''),
+  );
+</script>
+
+<div class="widget-body clock" class:expanded={size === 'large'}>
+  <div class="clock-time">
+    <span>{clock}</span><small
+      >{parts.find((p) => p.type === 'dayPeriod')?.value}</small
     >
   </div>
-  <p class="clock-date">
-    {date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    })}
-  </p>
-  {#if size === 'large'}<p class="quiet">A little space for your day.</p>{/if}
+  <div class="clock-date">
+    <span>{new Date(now).toLocaleDateString('en-US', { weekday: 'long' })}</span
+    ><span
+      >{new Date(now).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+      })}</span
+    >
+  </div>
 </div>
