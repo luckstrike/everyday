@@ -23,6 +23,8 @@ Every board fits one screen. Portrait and landscape have **independent saved arr
 
 Weather’s **Days / Hours** button changes its forecast in place. The arrow on Around Dallas manually advances the sample recommendation. Suggestions, dates, venues, and prices are illustrative, not verified listings. Bills show outstanding payments, with more detail at larger sizes; there is no budget or spending summary.
 
+Use the settings icon beside **Dallas, TX** to choose **Evergreen** or **Turquoise**. The choice applies immediately and persists in this browser. Layout and widget notices use a shared toast that dismisses after 4.5 seconds, pausing while hovered or focused.
+
 ## Touch editing
 
 **Add widget** opens a draft editor and the catalog. **Board name → Edit layout** opens the editor without the catalog.

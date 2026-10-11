@@ -14,6 +14,15 @@
       <p class="widget-title">{data.condition}</p>
       <p class="quiet">High {data.high}° · Low {data.low}°</p>
     </div>
+    <button
+      class="forecast-toggle"
+      aria-label={`Show ${forecast === 'days' ? 'hourly' : 'daily'} forecast`}
+      onclick={() => (forecast = forecast === 'days' ? 'hours' : 'days')}
+      >{forecast === 'days' ? 'Days' : 'Hours'}<Icon
+        name="down"
+        size={12}
+      /></button
+    >
   </div>
   {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
   <div class="forecast-strip">
@@ -33,13 +42,4 @@
             >{/if}
         </div>{/each}{/if}
   </div>
-  <button
-    class="forecast-toggle"
-    aria-label={`Show ${forecast === 'days' ? 'hourly' : 'daily'} forecast`}
-    onclick={() => (forecast = forecast === 'days' ? 'hours' : 'days')}
-    >{forecast === 'days' ? 'Days' : 'Hours'}<Icon
-      name="down"
-      size={12}
-    /></button
-  >
 </div>

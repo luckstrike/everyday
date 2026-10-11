@@ -3,6 +3,10 @@
   import DashboardGrid from './components/DashboardGrid.svelte';
   import WidgetPicker from './components/WidgetPicker.svelte';
   import Icon from './components/Icon.svelte';
+  import Toast from './components/Toast.svelte';
+  import DisplaySettings from './components/DisplaySettings.svelte';
+  import { loadTheme, THEME_KEY, type Theme } from './lib/theme.ts';
+  import { catalog } from './lib/catalog.ts';
   import { getConfig, getState, getWidgets, simulate } from './lib/api.ts';
   import {
     BOARDS_KEY,
@@ -55,6 +59,23 @@
   let name = $state(''),
     error = $state(''),
     notice = $state('');
+  let noticeToken = $state(0);
+  let theme = $state<Theme>(loadTheme());
+  $effect(() => {
+    document.documentElement.dataset.theme = theme;
+  });
+  function notify(message: string) {
+    notice = message;
+    noticeToken++;
+  }
+  function chooseTheme(value: Theme) {
+    theme = value;
+    try {
+      localStorage.setItem(THEME_KEY, value);
+    } catch {
+      notify('Theme applied for this session. Browser storage is unavailable.');
+    }
+  }
   const board = $derived(store.boards.find((b) => b.id === store.activeId)!);
   const saved = $derived(board.layouts[orientation]);
   const ranks = $derived(
@@ -130,8 +151,9 @@
           if (raw) store = parseBoards(raw, widgets);
           else if (legacy) store = migrateLayouts(legacy, widgets);
         } catch {
-          notice =
-            'Saved boards could not be loaded. Using Everyday; your saved data has been retained.';
+          notify(
+            'Saved boards could not be loaded. Using Everyday; your saved data has been retained.',
+          );
         }
       }
       dashboard = await getState();
@@ -178,8 +200,9 @@
       notice = '';
       return true;
     } catch {
-      notice =
-        'Could not save. Browser storage is unavailable; your edits are still here.';
+      notify(
+        'Could not save. Browser storage is unavailable; your edits are still here.',
+      );
       return false;
     }
   }
@@ -230,7 +253,7 @@
     if (persist(next)) {
       editing = false;
       closePicker();
-      notice = 'Layout saved.';
+      notify('Layout saved.');
     }
   }
   function chooseWidget(id: WidgetId) {
@@ -265,9 +288,13 @@
       };
   }
   function place(item: Placement) {
+    const wasExisting = pending?.existing;
     draft = [...draft.filter((p) => p.id !== item.id), { ...item }];
     pending = null;
     picker = false;
+    notify(
+      `${catalog.find((w) => w.id === item.id)?.title ?? 'Widget'} ${wasExisting ? 'updated' : 'added to layout'}. Save to keep your changes.`,
+    );
     void tick().then(() =>
       (
         document.querySelector(
@@ -306,8 +333,7 @@
       lastSuccess = Date.now();
       error = '';
     } catch {
-      notice =
-        'Simulation unavailable. Start the backend with DASHBOARD_DEV=1.';
+      notify('Simulation unavailable. Start the backend with DASHBOARD_DEV=1.');
     } finally {
       busy = false;
     }
@@ -318,7 +344,7 @@
       else await document.documentElement.requestFullscreen();
       boardMenu = false;
     } catch {
-      notice = 'Use your browser’s fullscreen command to fill the display.';
+      notify('Use your browser’s fullscreen command to fill the display.');
     }
   }
   function escape(event: KeyboardEvent) {
@@ -434,9 +460,11 @@
             </p>
           </div>{/if}
       </div>
-      <span class="header-location"
-        >{dashboard?.weather.location ?? 'Dallas, TX'}</span
-      >{/if}
+      <div class="header-tools">
+        <span class="header-location"
+          >{dashboard?.weather.location ?? 'Dallas, TX'}</span
+        ><DisplaySettings {theme} onchange={chooseTheme} />
+      </div>{/if}
   </header>
   <div class="board-slot">
     {#if dashboard}{#key `${board.id}:${editing ? editOrientation : orientation}`}<DashboardGrid
@@ -479,13 +507,7 @@
         : 'Add widget'}</button
     >
   </footer>
-  {#if notice}<div class="toast" role="status">
-      {notice}<button
-        class="icon-button"
-        aria-label="Dismiss notice"
-        onclick={() => (notice = '')}><Icon name="close" size={16} /></button
-      >
-    </div>{/if}
+  <Toast message={notice} token={noticeToken} ondismiss={() => (notice = '')} />
   {#if picker}<WidgetPicker
       items={draft}
       selected={pending?.id ?? null}
@@ -497,7 +519,12 @@
       onclose={closePicker}
       onback={() => (pending = null)}
       onremove={() => {
-        if (pending) draft = draft.filter((p) => p.id !== pending?.id);
+        if (pending) {
+          notify(
+            `${catalog.find((w) => w.id === pending?.id)?.title ?? 'Widget'} removed. Save to keep your changes.`,
+          );
+          draft = draft.filter((p) => p.id !== pending?.id);
+        }
         pending = null;
         picker = false;
       }}
