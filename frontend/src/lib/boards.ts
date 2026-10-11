@@ -49,6 +49,21 @@ export function everyday(): Board {
 export function initialBoards(): BoardStore {
   return { version: 2, activeId: 'everyday', boards: [everyday()] };
 }
+export function layoutsEqual(a: Placement[], b: Placement[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((item) => {
+      const other = b.find((p) => p.id === item.id);
+      return (
+        other !== undefined &&
+        item.x === other.x &&
+        item.y === other.y &&
+        item.w === other.w &&
+        item.h === other.h
+      );
+    })
+  );
+}
 export function overlaps(a: Placement, b: Placement): boolean {
   return (
     a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y

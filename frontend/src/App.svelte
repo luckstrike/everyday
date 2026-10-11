@@ -5,6 +5,7 @@
   import Icon from './components/Icon.svelte';
   import Toast from './components/Toast.svelte';
   import DisplaySettings from './components/DisplaySettings.svelte';
+  import DiscardLayoutDialog from './components/DiscardLayoutDialog.svelte';
   import { loadTheme, THEME_KEY, type Theme } from './lib/theme.ts';
   import { catalog } from './lib/catalog.ts';
   import { getConfig, getState, getWidgets, simulate } from './lib/api.ts';
@@ -15,6 +16,7 @@
     parseBoards,
     validPositions,
     footprint,
+    layoutsEqual,
     type BoardStore,
     type Orientation,
   } from './lib/boards.ts';
@@ -49,6 +51,8 @@
     busy = $state(false);
   let draft = $state<Placement[]>([]),
     editOrientation = $state<Orientation>('landscape');
+  let editEntry = $state<'add' | 'layout'>('layout');
+  let discardOpen = $state(false);
   let pending = $state<{
     id: WidgetId;
     size: Size;
@@ -78,6 +82,9 @@
   }
   const board = $derived(store.boards.find((b) => b.id === store.activeId)!);
   const saved = $derived(board.layouts[orientation]);
+  const dirty = $derived(
+    editing && !layoutsEqual(draft, board.layouts[editOrientation]),
+  );
   const ranks = $derived(
     rankWidgets(
       definitions,
@@ -179,7 +186,7 @@
     void poll();
     const clock = setInterval(() => (now = Date.now()), 1000);
     const leave = (event: BeforeUnloadEvent) => {
-      if (editing) {
+      if (dirty) {
         event.preventDefault();
         event.returnValue = '';
       }
@@ -210,6 +217,7 @@
     if (!editing) {
       draft = saved.map((p) => ({ ...p }));
       editOrientation = orientation;
+      editEntry = showPicker ? 'add' : 'layout';
       editing = true;
     }
     boardMenu = false;
@@ -224,6 +232,10 @@
     (document.querySelector('.widget-picker') as HTMLElement | null)?.focus();
   }
   function closePicker() {
+    if (editing && editEntry === 'add' && !dirty) {
+      finishEdit();
+      return;
+    }
     picker = false;
     pending = null;
     void tick().then(() =>
@@ -231,9 +243,22 @@
     );
   }
   function cancel() {
+    if (dirty) discardOpen = true;
+    else finishEdit();
+  }
+  function finishEdit() {
+    const returnSelector = editEntry === 'add' ? '.add-widget' : '.edit-layout';
+    discardOpen = false;
     editing = false;
-    closePicker();
+    picker = false;
+    pending = null;
+    draft = [];
     notice = '';
+    void tick().then(() =>
+      (
+        document.querySelector(returnSelector) as HTMLButtonElement | null
+      )?.focus(),
+    );
   }
   function save() {
     const next: BoardStore = {
@@ -251,8 +276,7 @@
       ),
     };
     if (persist(next)) {
-      editing = false;
-      closePicker();
+      finishEdit();
       notify('Layout saved.');
     }
   }
@@ -349,6 +373,7 @@
   }
   function escape(event: KeyboardEvent) {
     if (event.key !== 'Escape') return;
+    if (discardOpen) return;
     if (pending) pending = null;
     else if (picker) closePicker();
     else {
@@ -519,6 +544,10 @@
     </div>
   </footer>
   <Toast message={notice} token={noticeToken} ondismiss={() => (notice = '')} />
+  {#if discardOpen}<DiscardLayoutDialog
+      onkeep={() => (discardOpen = false)}
+      ondiscard={finishEdit}
+    />{/if}
   {#if picker}<WidgetPicker
       items={draft}
       selected={pending?.id ?? null}

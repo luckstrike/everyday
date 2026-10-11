@@ -8,6 +8,7 @@ import {
   footprint,
   migrateLayouts,
   widgetIds,
+  layoutsEqual,
 } from '../src/lib/boards.ts';
 import type { WidgetDefinition } from '../src/lib/types.ts';
 const definitions = widgetIds.map((id) => ({
@@ -19,6 +20,20 @@ const definitions = widgetIds.map((id) => ({
   defaultWidth: 4,
   defaultHeight: 3,
 })) satisfies WidgetDefinition[];
+test('layout change detection ignores ordering and recognizes reverted edits', () => {
+  const saved = initialBoards().boards[0].layouts.portrait;
+  const draft = saved.map((p) => ({ ...p })).reverse();
+  assert.ok(layoutsEqual(saved, draft));
+  for (const key of ['x', 'y', 'w', 'h'] as const) {
+    draft[0][key]++;
+    assert.equal(layoutsEqual(saved, draft), false);
+    draft[0][key]--;
+    assert.ok(layoutsEqual(saved, draft));
+  }
+  assert.equal(layoutsEqual(saved, draft.slice(1)), false);
+  assert.equal(layoutsEqual(draft.slice(1), saved), false);
+  assert.ok(layoutsEqual([], []));
+});
 test('prototype boards fit in both orientations and round trip without losing geometry', () => {
   const store = initialBoards();
   assert.deepEqual(parseBoards(JSON.stringify(store), definitions), store);
