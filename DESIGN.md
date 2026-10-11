@@ -6,7 +6,7 @@ Use system sans, normal weights, and a light clock face. Evergreen background ok
 
 Clock digits use tabular numbers with light tracking (-0.025em), keeping minutes distinct while retaining a compact clock face.
 
-Landscape uses 48px outer padding and 24px gaps. Portrait uses 32px padding and 20px gaps. Clock and weather anchor the upper area; calendar, bills and local discovery sit below; sports is a quiet full-width strip. Discovery uses a subtle tint (35% raised surface mixed into the background) in either theme, without a redundant Sample pick label. The Add widget action sits bottom right.
+Landscape uses 48px outer padding and 24px gaps. Portrait uses 32px padding and 20px gaps. Clock and weather anchor the upper area; calendar, bills and local discovery sit below; sports is a quiet full-width strip. All widget backgrounds match the board, including Around Dallas, which has no Sample pick label. Priority emphasis gently pulses only the border three times over nine seconds, then keeps a steady accent border until emphasis ends. Reduced motion uses the steady border immediately. Priority never brightens widget backgrounds or text. The Add widget action sits bottom right.
 
 Named boards switch manually. Each board saves independent portrait and landscape arrangements on a bounded 24 by 24 grid. The grid supports placement and collision checks; it never grows, auto-fills gaps, or rearranges existing tiles. Selecting a catalog widget reveals its actual footprint, size choices and valid placement. Touch, keyboard and optional pointer dragging share the same validation. Editing is a draft until Save; Cancel restores the saved board. Controls have at least 44px effective touch targets.
 

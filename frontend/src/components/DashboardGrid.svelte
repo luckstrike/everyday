@@ -127,7 +127,6 @@
 >
   {#each items as item (item.id)}<section
       class="widget"
-      class:discovery-panel={item.id === 'discover'}
       class:pending={pendingId === item.id}
       class:emphasized={!editing && attention?.widget === item.id}
       class:small={sizeFor(item) === 'small'}

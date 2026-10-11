@@ -166,9 +166,16 @@ main.portrait {
 }
 .widget.emphasized {
   border-color: var(--accent);
+  animation: priority-border-pulse 3s ease-in-out 3;
 }
-.widget.discovery-panel {
-  background: color-mix(in oklch, var(--bg) 65%, var(--surface));
+@keyframes priority-border-pulse {
+  0%,
+  100% {
+    border-color: var(--accent);
+  }
+  50% {
+    border-color: color-mix(in oklch, var(--line) 65%, var(--accent));
+  }
 }
 .widget.pending {
   opacity: 0.28;
@@ -832,6 +839,9 @@ footer > span {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .widget.emphasized {
+    animation: none;
+  }
   *,
   *::before,
   *::after {
