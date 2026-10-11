@@ -338,10 +338,12 @@ footer {
 footer > span {
   max-width: 65ch;
 }
+.edit-layout,
 .add-widget {
-  height: 52px;
-  padding: 12px 20px;
-  font-size: 16px;
+  height: 44px;
+  padding: 8px 10px;
+  font-size: 13px;
+  gap: 6px;
   flex-shrink: 0;
 }
 .add-widget.picker-open {
@@ -352,11 +354,11 @@ footer > span {
 .layout-tools {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
 }
 .edit-layout {
-  border-color: transparent;
+  border-color: var(--line);
   color: var(--muted);
 }
 .popover {
@@ -790,11 +792,7 @@ footer > span {
     padding: 20px;
   }
   .layout-tools {
-    gap: 4px;
-  }
-  .edit-layout {
-    font-size: 14px;
-    padding-inline: 10px;
+    gap: 8px;
   }
   .board-menu {
     max-width: calc(100vw - 32px);
@@ -802,12 +800,6 @@ footer > span {
   footer {
     font-size: 12px;
   }
-  .add-widget {
-    height: 48px;
-    padding: 10px 16px;
-    font-size: 14px;
-  }
-
   .clock-date {
     font-size: 16px;
   }

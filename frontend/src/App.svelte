@@ -530,14 +530,14 @@
           class="edit-layout"
           disabled={!dashboard}
           onclick={() => beginEdit(false)}
-          ><Icon name="edit" size={18} />Edit layout</button
+          ><Icon name="edit" size={16} />Edit layout</button
         >{/if}
       <button
         class="add-widget"
         class:picker-open={picker}
         disabled={!dashboard}
         onclick={() => (picker ? closePicker() : beginEdit())}
-        ><Icon name={picker ? 'close' : 'plus'} size={20} />{picker
+        ><Icon name={picker ? 'close' : 'plus'} size={16} />{picker
           ? 'Close picker'
           : 'Add widget'}</button
       >
