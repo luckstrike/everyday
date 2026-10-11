@@ -1,6 +1,6 @@
 import type { WidgetId } from './types.ts';
 export const catalog: { id: WidgetId; title: string; description: string }[] = [
-  { id: 'clock', title: 'Clock', description: 'Time and date' },
+  { id: 'clock', title: 'Clock', description: 'Time, date and month calendar' },
   {
     id: 'weather',
     title: 'Weather',
