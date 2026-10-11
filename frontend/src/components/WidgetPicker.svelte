@@ -32,18 +32,24 @@
   aria-label={selected ? 'Widget placement' : 'Add a widget'}
   tabindex="-1"
 >
-  <div class="popover-heading">
-    <h2>
+  <div class="picker-intro">
+    <div class="popover-heading">
+      <h2>
+        {selected
+          ? `${existing ? 'Edit' : 'Place'} ${catalog.find((w) => w.id === selected)?.title}`
+          : 'Add a widget'}
+      </h2>
+      <button class="icon-button" aria-label="Close picker" onclick={onclose}
+        ><Icon name="close" /></button
+      >
+    </div>
+    <p class="quiet">
       {selected
-        ? `${existing ? 'Edit' : 'Place'} ${catalog.find((w) => w.id === selected)?.title}`
-        : 'Add a widget'}
-    </h2>
-    <button class="icon-button" aria-label="Close picker" onclick={onclose}
-      ><Icon name="close" /></button
-    >
+        ? 'Tap a highlighted position to place it.'
+        : 'Tap a widget to see where it fits.'}
+    </p>
   </div>
   {#if selected}
-    <p class="quiet">Tap a highlighted position to place it.</p>
     <div class="size-options" aria-label="Widget size">
       {#each ['small', 'medium', 'large'] as value}<button
           class:selected={size === value}
@@ -65,7 +71,6 @@
         >{/if}
     </div>
   {:else}
-    <p class="quiet">Tap a widget to see where it fits.</p>
     <div class="catalog">
       {#each catalog as widget}{@const present = items.some(
           (p) => p.id === widget.id,

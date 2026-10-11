@@ -126,9 +126,6 @@
   :global(.editing) .forecast-toggle {
     right: 48px;
   }
-  :global(.editing) .weather-current {
-    padding-right: 104px;
-  }
   .alert-copy {
     color: var(--accent);
     font-size: clamp(16px, 3cqw, 32px);
@@ -256,9 +253,6 @@
     }
     .forecast-strip strong small {
       font-size: 12px;
-    }
-    :global(.editing) .weather-current .quiet {
-      display: none;
     }
   }
   @container (max-height:120px) {

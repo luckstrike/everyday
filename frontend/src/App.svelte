@@ -388,7 +388,9 @@
         <span class="quiet"
           >{pending
             ? 'Tap a highlighted position'
-            : 'Choose a widget to preview its position'}<small
+            : picker
+              ? 'Choose a widget to preview its position'
+              : 'Tap a handle to move or resize a widget'}<small
             >{editOrientation} layout</small
           ></span
         >
@@ -497,15 +499,24 @@
           : dashboard?.mock
             ? 'Mock data'
             : 'Local display'}</span
-    ><button
-      class="add-widget"
-      class:picker-open={picker}
-      disabled={!dashboard}
-      onclick={() => (picker ? closePicker() : beginEdit())}
-      ><Icon name={picker ? 'close' : 'plus'} size={20} />{picker
-        ? 'Close picker'
-        : 'Add widget'}</button
     >
+    <div class="layout-tools">
+      {#if !editing}<button
+          class="edit-layout"
+          disabled={!dashboard}
+          onclick={() => beginEdit(false)}
+          ><Icon name="edit" size={18} />Edit layout</button
+        >{/if}
+      <button
+        class="add-widget"
+        class:picker-open={picker}
+        disabled={!dashboard}
+        onclick={() => (picker ? closePicker() : beginEdit())}
+        ><Icon name={picker ? 'close' : 'plus'} size={20} />{picker
+          ? 'Close picker'
+          : 'Add widget'}</button
+      >
+    </div>
   </footer>
   <Toast message={notice} token={noticeToken} ondismiss={() => (notice = '')} />
   {#if picker}<WidgetPicker

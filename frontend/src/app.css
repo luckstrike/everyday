@@ -342,6 +342,16 @@ footer > span {
   background: var(--surface);
   border-color: var(--line);
 }
+.layout-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.edit-layout {
+  border-color: transparent;
+  color: var(--muted);
+}
 .popover {
   background: var(--surface);
   border: 1px solid var(--muted);
@@ -438,14 +448,14 @@ footer > span {
   top: 0;
   right: 0;
   touch-action: none;
-  color: var(--muted);
   z-index: 2;
+  color: var(--accent);
 }
 .move-handle:hover {
   color: var(--accent);
 }
-.editing .widget-body {
-  padding-top: max(28px, var(--pad));
+.editing .widget {
+  border-color: var(--accent);
 }
 .placement-preview {
   margin: calc(var(--gap) / 2);
@@ -495,6 +505,27 @@ footer > span {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+.widget-picker {
+  padding: 24px;
+}
+.picker-intro {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.picker-intro .quiet {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.picker-intro .icon-button {
+  margin: -4px -8px -4px 0;
+}
+.widget-picker .catalog-row {
+  width: calc(100% + 16px);
+  margin-inline: -8px;
+  padding-inline: 8px;
 }
 .popover-heading .icon-button {
   margin: -8px -8px -8px 0;
@@ -683,6 +714,10 @@ footer > span {
   }
 }
 @container (max-height: 100px) {
+  .move-handle {
+    align-items: flex-start;
+    padding-top: 2px;
+  }
   .widget-body {
     padding: 10px 16px;
     gap: 4px;
@@ -743,6 +778,16 @@ footer > span {
     max-width: calc(100vw - 32px);
     padding: 16px;
     max-height: calc(100dvh - 155px);
+  }
+  .widget-picker {
+    padding: 20px;
+  }
+  .layout-tools {
+    gap: 4px;
+  }
+  .edit-layout {
+    font-size: 14px;
+    padding-inline: 10px;
   }
   .board-menu {
     max-width: calc(100vw - 32px);
