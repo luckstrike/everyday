@@ -14,7 +14,7 @@
 </script>
 
 <div class="widget-body discover">
-  <p class="eyebrow accent">Around Dallas<span>Sample pick</span></p>
+  <p class="eyebrow accent">Around Dallas</p>
   {#if event}<div class="discovery-title">
       <p class="widget-title">{event.title}</p>
       <button

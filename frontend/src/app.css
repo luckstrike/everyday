@@ -168,7 +168,7 @@ main.portrait {
   border-color: var(--accent);
 }
 .widget.discovery-panel {
-  background: var(--surface);
+  background: color-mix(in oklch, var(--bg) 65%, var(--surface));
 }
 .widget.pending {
   opacity: 0.28;
