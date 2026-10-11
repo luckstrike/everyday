@@ -1,8 +1,6 @@
 import type {
   AttentionEvent,
   Presentation,
-  ScreenDefinition,
-  ScreenId,
   WidgetDefinition,
   WidgetId,
 } from './types.ts';
@@ -19,14 +17,6 @@ export const modifiers: Record<string, Record<string, number>> = {
   },
   calendar: { today: 10, upcoming: 25, soon: 50 },
 };
-export const screenFor: Record<WidgetId, ScreenId> = {
-  clock: 'home',
-  calendar: 'home',
-  discover: 'home',
-  weather: 'weather',
-  sports: 'sports',
-  finance: 'finance',
-};
 export function eventModifier(event: AttentionEvent, now: number): number {
   const start = Date.parse(event.startsAt),
     end = Date.parse(event.expiresAt);
@@ -42,7 +32,7 @@ export function eventModifier(event: AttentionEvent, now: number): number {
   return event.decay ? value * (1 - (now - start) / (end - start)) : value;
 }
 export interface Candidate {
-  id: ScreenId;
+  id: WidgetId;
   score: number;
   modifier: number;
   eventId?: string;
@@ -50,26 +40,22 @@ export interface Candidate {
   presentation: Presentation;
   urgent: boolean;
 }
-export function rankScreens(
-  screens: ScreenDefinition[],
+export function rankWidgets(
   widgets: WidgetDefinition[],
   events: AttentionEvent[],
   now: number,
 ): Candidate[] {
-  return screens
-    .map((screen) => {
+  return widgets
+    .map((widget) => {
       const active = events
-        .filter((e) => screenFor[e.widget] === screen.id)
+        .filter((e) => e.widget === widget.id)
         .map((event) => ({ event, value: eventModifier(event, now) }))
         .filter((e) => e.value > 0)
         .sort(
           (a, b) => b.value - a.value || a.event.id.localeCompare(b.event.id),
         );
       const top = active[0];
-      const base = top
-        ? (widgets.find((w) => w.id === top.event.widget)?.basePriority ??
-          screen.basePriority)
-        : screen.basePriority;
+      const base = widget.basePriority;
       const presentation: Presentation =
         top?.event.kind === 'severe'
           ? 'FULLSCREEN'
@@ -77,11 +63,11 @@ export function rankScreens(
             ? 'EMPHASIZED'
             : 'NORMAL';
       return {
-        id: screen.id,
+        id: widget.id,
         score: base + (top?.value ?? 0),
         modifier: top?.value ?? 0,
         eventId: top?.event.id,
-        widget: top?.event.widget,
+        widget: widget.id,
         presentation,
         urgent: (top?.value ?? 0) >= 50,
       };

@@ -19,7 +19,8 @@
   <div class="forecast-strip">
     {#if forecast === 'hours'}{#each data.hourly.slice(0, 4) as hour}<div>
           <span>{hour.label}</span><strong>{hour.temperature}°</strong
-          >{#if size === 'large'}<small>{hour.condition}</small>{/if}
+          >{#if size === 'large' && data.alert}<small>{hour.condition}</small
+            >{/if}
         </div>{/each}{:else}{#each data.daily.slice(0, 4) as day, i}<div>
           <span
             >{i === 0
@@ -28,7 +29,8 @@
                   weekday: 'short',
                 })}</span
           ><strong>{day.high}° <small>{day.low}°</small></strong
-          >{#if size === 'large'}<small>{day.condition}</small>{/if}
+          >{#if size === 'large' && data.alert}<small>{day.condition}</small
+            >{/if}
         </div>{/each}{/if}
   </div>
   <button

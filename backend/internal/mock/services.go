@@ -13,7 +13,7 @@ func sportsState(now time.Time) domain.Sports {
 	return domain.Sports{League: "NBA · Preseason", Home: "Mavericks", HomeCode: "DAL", Away: "Spurs", AwayCode: "SAS", Status: "scheduled", Detail: "American Airlines Center · Dallas", StartsAt: now.Add(48 * time.Hour)}
 }
 func financeState(now time.Time) domain.Finance {
-	return domain.Finance{Bills: []domain.Bill{{Name: "Electricity", Amount: 84.50, DueAt: now.Add(5 * 24 * time.Hour), Autopay: true}, {Name: "Internet", Amount: 65, DueAt: now.Add(3 * 24 * time.Hour), Autopay: true}, {Name: "Rent", Amount: 1850, DueAt: now.Add(20 * 24 * time.Hour), Autopay: false}}}
+	return domain.Finance{Bills: []domain.Bill{{Name: "Electricity", Amount: 84.50, DueAt: now.Add(5 * 24 * time.Hour), Autopay: true}, {Name: "Internet", Amount: 65, DueAt: now.Add(4 * 24 * time.Hour), Autopay: true}, {Name: "Rent", Amount: 1850, DueAt: now.Add(20 * 24 * time.Hour), Autopay: false}}}
 }
 func calendarState(now time.Time) []domain.CalendarEvent {
 	return []domain.CalendarEvent{{Title: "Dinner with Alex", Location: "At home", StartsAt: now.Add(25 * time.Hour), EndsAt: now.Add(27 * time.Hour)}, {Title: "Weekly planning", Location: "At home", StartsAt: now.Add(48 * time.Hour), EndsAt: now.Add(49 * time.Hour)}}

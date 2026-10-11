@@ -137,6 +137,7 @@
       <Widget id={item.id} {dashboard} {now} size={sizeFor(item)} />
       {#if editing}<button
           class="move-handle icon-button"
+          data-widget-id={item.id}
           aria-label={`Edit ${item.id}, drag or use arrow keys to move`}
           onpointerdown={(e) => pointer(e, item)}
           onkeydown={(e) => keyboard(e, item)}

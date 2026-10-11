@@ -90,35 +90,21 @@ type Widget struct {
 	DefaultWidth  int    `json:"defaultWidth"`
 	DefaultHeight int    `json:"defaultHeight"`
 }
-type Screen struct {
-	ID            string `json:"id"`
-	Title         string `json:"title"`
-	BasePriority  int    `json:"basePriority"`
-	CooldownMs    int    `json:"cooldownMs"`
-	MinDurationMs int    `json:"minDurationMs"`
-	MaxDurationMs int    `json:"maxDurationMs"`
-}
 type Config struct {
-	Screens        []Screen `json:"screens"`
-	PollIntervalMs int      `json:"pollIntervalMs"`
-	Development    bool     `json:"development"`
+	PollIntervalMs int  `json:"pollIntervalMs"`
+	Development    bool `json:"development"`
 }
 
 func Widgets() []Widget {
 	return []Widget{
-		{"clock", "Time & date", 10, 3, 2, 7, 3},
-		{"weather", "Weather", 20, 3, 2, 5, 3},
-		{"sports", "Sports", 20, 3, 2, 4, 3},
-		{"finance", "Upcoming bills", 25, 3, 2, 4, 3},
-		{"calendar", "Calendar", 25, 3, 2, 4, 3},
-		{"discover", "Around Dallas", 15, 3, 2, 4, 3},
+		{"clock", "Time & date", 10, 6, 2, 14, 12},
+		{"weather", "Weather", 20, 6, 2, 10, 12},
+		{"sports", "Sports", 20, 6, 2, 24, 4},
+		{"finance", "Upcoming bills", 25, 6, 2, 7, 8},
+		{"calendar", "Calendar", 25, 6, 2, 7, 8},
+		{"discover", "Around Dallas", 15, 6, 2, 10, 8},
 	}
 }
 func Configuration(dev bool) Config {
-	return Config{[]Screen{
-		{"home", "Home", 10, 0, 10000, 20000},
-		{"weather", "Weather", 20, 65000, 10000, 25000},
-		{"sports", "Sports", 20, 65000, 10000, 25000},
-		{"finance", "Finance", 25, 65000, 10000, 25000},
-	}, 5000, dev}
+	return Config{PollIntervalMs: 5000, Development: dev}
 }

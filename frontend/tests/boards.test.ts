@@ -13,7 +13,7 @@ import type { WidgetDefinition } from '../src/lib/types.ts';
 const definitions = widgetIds.map((id) => ({
   id,
   title: id,
-  minWidth: 3,
+  minWidth: 6,
   minHeight: 2,
   basePriority: 10,
   defaultWidth: 4,
@@ -100,4 +100,21 @@ test('legacy custom layouts survive migration and leave source intact', () => {
     migrated,
   );
   assert.deepEqual(JSON.parse(raw).home, items);
+});
+test('migration never resets a rearranged six-widget default', () => {
+  const home = widgetIds.map((id, i) => ({
+    id,
+    x: (i % 3) * 4,
+    y: Math.floor(i / 3) * 3,
+    w: 4,
+    h: 3,
+  }));
+  const migrated = migrateLayouts(
+    JSON.stringify({ home, weather: [], sports: [], finance: [] }),
+    definitions,
+  );
+  assert.deepEqual(
+    migrated.boards[0].layouts.landscape,
+    home.map((p) => ({ ...p, x: p.x * 2, y: p.y * 4, w: p.w * 2, h: p.h * 4 })),
+  );
 });

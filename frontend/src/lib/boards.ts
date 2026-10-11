@@ -65,7 +65,7 @@ export function canPlace(
     [item.x, item.y, item.w, item.h].every(Number.isInteger) &&
     item.x >= 0 &&
     item.y >= 0 &&
-    item.w >= def.minWidth * 2 &&
+    item.w >= def.minWidth &&
     item.h >= def.minHeight &&
     item.x + item.w <= GRID &&
     item.y + item.h <= GRID &&
@@ -77,13 +77,15 @@ export function footprint(
   size: Size,
   orientation: Orientation,
 ): Pick<Placement, 'w' | 'h'> {
+  if (orientation === 'portrait' && id === 'weather')
+    return { w: 24, h: size === 'small' ? 6 : size === 'medium' ? 8 : 12 };
   if (orientation === 'portrait')
     return size === 'small'
-      ? { w: 12, h: 4 }
+      ? { w: 12, h: 5 }
       : size === 'medium'
         ? { w: 24, h: 5 }
         : { w: 24, h: 8 };
-  if (size === 'small') return { w: 6, h: id === 'weather' ? 6 : 4 };
+  if (size === 'small') return { w: id === 'weather' ? 8 : 6, h: 6 };
   return size === 'medium' ? { w: 10, h: 8 } : { w: 14, h: 12 };
 }
 export function validPositions(
@@ -170,12 +172,38 @@ export function migrateLayouts(
     if (!validLayout(landscape, definitions))
       throw new Error('Invalid legacy layout');
     // Untouched defaults adopt the prototype. Customized geometry becomes an extra board.
+    const previousDefaults: Placement[][] = [
+      [
+        { id: 'clock', x: 0, y: 0, w: 4, h: 3 },
+        { id: 'weather', x: 4, y: 0, w: 4, h: 3 },
+        { id: 'discover', x: 8, y: 0, w: 4, h: 3 },
+        { id: 'calendar', x: 0, y: 3, w: 4, h: 3 },
+        { id: 'finance', x: 4, y: 3, w: 4, h: 3 },
+        { id: 'sports', x: 8, y: 3, w: 4, h: 3 },
+      ],
+      [
+        { id: 'clock', x: 0, y: 0, w: 7, h: 3 },
+        { id: 'weather', x: 7, y: 0, w: 5, h: 3 },
+        { id: 'calendar', x: 0, y: 3, w: 4, h: 3 },
+        { id: 'finance', x: 4, y: 3, w: 4, h: 3 },
+        { id: 'sports', x: 8, y: 3, w: 4, h: 3 },
+      ],
+    ];
     const isDefault =
       id === 'home' &&
-      items.length === 6 &&
-      items.every(
-        (p: Placement) =>
-          p.w === 4 && p.h === 3 && p.x % 4 === 0 && p.y % 3 === 0,
+      previousDefaults.some(
+        (previous) =>
+          previous.length === items.length &&
+          previous.every((old) =>
+            items.some(
+              (p: Placement) =>
+                old.id === p.id &&
+                old.x === p.x &&
+                old.y === p.y &&
+                old.w === p.w &&
+                old.h === p.h,
+            ),
+          ),
       );
     boards.push(
       isDefault

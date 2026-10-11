@@ -15,7 +15,11 @@
           >Live</span
         >{/if}
     </p>
-    <p class="widget-title">{data.home} vs. {data.away}</p>
+    <p class="widget-title">
+      <span class="team-full">{data.home} vs. {data.away}</span><span
+        class="team-short">{data.homeCode} vs. {data.awayCode}</span
+      >
+    </p>
   </div>
   <div class="sports-meta">
     <p class="accent">
@@ -23,7 +27,7 @@
         ? `${day(data.startsAt, now)} · ${time(data.startsAt)}`
         : `${data.homeScore} : ${data.awayScore}`}
     </p>
-    <p class="quiet">{data.detail}</p>
+    <p class="quiet">{data.detail.replace(' · Dallas', '')}</p>
   </div>
   {#if size === 'large'}<p class="quiet">{data.league} · Mock game</p>{/if}
 </div>

@@ -1,6 +1,5 @@
 export type WidgetId =
   'clock' | 'weather' | 'sports' | 'finance' | 'calendar' | 'discover';
-export type ScreenId = 'home' | 'weather' | 'sports' | 'finance';
 export type Size = 'small' | 'medium' | 'large';
 export type Presentation = 'NORMAL' | 'EMPHASIZED' | 'FULLSCREEN';
 export interface WidgetDefinition {
@@ -12,16 +11,7 @@ export interface WidgetDefinition {
   defaultWidth: number;
   defaultHeight: number;
 }
-export interface ScreenDefinition {
-  id: ScreenId;
-  title: string;
-  basePriority: number;
-  cooldownMs: number;
-  minDurationMs: number;
-  maxDurationMs: number;
-}
 export interface Config {
-  screens: ScreenDefinition[];
   pollIntervalMs: number;
   development: boolean;
 }
@@ -32,7 +22,6 @@ export interface Placement {
   w: number;
   h: number;
 }
-export type Layouts = Record<ScreenId, Placement[]>;
 export interface AttentionEvent {
   id: string;
   widget: WidgetId;

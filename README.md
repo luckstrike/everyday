@@ -1,128 +1,99 @@
 # Apartment display
 
-A local wall-display prototype built with Svelte 5, TypeScript, Vite, and a small Go REST service. Weather, sports, bills, calendar entries, and Dallas event suggestions are **mock data**. The clock uses the browser’s local time.
+A personal wall dashboard built with Svelte 5, TypeScript, Vite, and a small Go REST service. The ambient evergreen UI follows the approved Paper portrait, landscape, board picker, and touch editor prototypes. All information except the browser’s local clock is **mock data**.
 
 ## Run on macOS
 
-Requires Node.js 22.18+ (24 LTS recommended), npm, and Go 1.22+. If Go is missing, use `brew install go` or the official installer.
+Requires Node.js 22.18+ (24 LTS recommended), npm, and Go 1.22+.
 
 ```sh
 make install
 make dev
 ```
 
-Open **http://127.0.0.1:5173**. The API listens on **127.0.0.1:8080**. Both servers bind only to loopback. Ctrl-C stops both. Ports are fixed so a conflict produces an error instead of silently changing the address.
+Open **http://127.0.0.1:5173**. The API binds to **127.0.0.1:8080**. Both processes stay on loopback; Ctrl-C stops both. Ports are fixed so conflicts fail visibly. `GO=/absolute/path/to/go make dev` selects another Go installation. This development session uses `/tmp/apt-display-toolchain/go/bin/go`; install Go normally for a lasting setup.
 
-Alternatively, start `make backend` and `make frontend` in separate terminals. `GO=/absolute/path/to/go make dev` selects an alternate toolchain. The current development session uses the verified temporary installation at `/tmp/apt-display-toolchain/go/bin/go`; install Go normally for a lasting setup.
+Choose **Everyday → Fullscreen**, or use the browser’s fullscreen command. For a wall session, prevent macOS display sleep through system settings or `caffeinate -d` in another terminal.
 
-Use **••• → Fullscreen**, or your browser’s fullscreen command. Display controls close when entering fullscreen. For an extended session, prevent macOS display sleep with normal system settings or `caffeinate -d` in another terminal.
+## Your boards
 
-## A stable board
+The initial **Everyday** board includes time/date, weather, the next calendar event, upcoming bills, Around Dallas discoveries, and Dallas basketball. Select the board name to switch boards or create a named empty board. Board selection is always manual. The app never rotates boards or scrolls them automatically.
 
-The board **does not rotate automatically**. Information stays in predictable positions. Home shows six widgets:
+Every board fits one screen. Portrait and landscape have **independent saved arrangements**. Editing one orientation preserves the other. A new board starts empty in both orientations. Spare space stays empty, and existing widgets are never automatically moved or stretched.
 
-- Time and date.
-- Weather, with manual **Hours / Days** controls and a four-day forecast.
-- **Around Dallas**, showing illustrative event suggestions. **Next** cycles through samples only when clicked. These are invented suggestions, not real schedules, ticket prices, or personalized recommendations.
-- Calendar: your next personal event.
-- Bills: the next bill and, at a larger size, additional upcoming bills. No budget or spending summary.
-- Sports: a Dallas Mavericks vs. San Antonio Spurs mock.
+Weather’s **Days / Hours** button changes its forecast in place. The arrow on Around Dallas manually advances the sample recommendation. Suggestions, dates, venues, and prices are illustrative, not verified listings. Bills show outstanding payments, with more detail at larger sizes; there is no budget or spending summary.
 
-Manual Weather, Sports, and Finance layouts remain available in the display controls for a closer look. Automatic Smart Stacks are intentionally not implemented: each widget keeps its meaning and location, and optional in-widget controls change only its own content.
+## Touch editing
 
-**Keep visible** pins individual widgets across these manual layouts. Pins persist separately from saved layouts. A severe-weather fullscreen alert temporarily takes precedence over pins.
+**Add widget** opens a draft editor and the catalog. **Board name → Edit layout** opens the editor without the catalog.
 
-The display uses the remaining viewport after the header, alerts, and footer. Controls float over the board. Portrait reflows Home into a clock, full-width weather, and two-column supporting widgets; narrow portrait uses compact single-column widgets. Content changes by available size rather than relying on internal scrolling. Landscape restores the configured grid geometry.
+1. Select an available widget. Nothing is reserved or highlighted before selection.
+2. Choose Small, Medium, or Large. The preview shows the actual footprint and whether it fits.
+3. Tap a highlighted position to place it. Occupied space is protected.
+4. Tap a widget’s upper-right handle to move it, choose another size, or remove it. You can also drag its handle, or focus it and use arrow keys for precise moves.
+5. **Save layout** persists this orientation in this browser. **Cancel** restores the saved layout.
 
-## Edit and save
+When a size cannot fit, choose a smaller size or explicitly resize/remove another widget. If all sizes fail, cancel editing and use another board. The editor never overlaps tiles or extends the board to force placement. Catalogs and menus may scroll independently. Touch controls are at least 44px. Escape closes placement/picker/menu controls. Browser navigation warns while a draft is open.
 
-**Edit layout** shows the canonical 12-column grid, independent of portrait reflow. Drag a top handle to move a widget or its lower-right handle to resize. Both handles also support arrow keys. Widgets cannot overlap and have minimum sizes.
+Saved boards use `apartment-display.boards.v2` in localStorage. Old v1 layouts migrate into named boards; custom landscape geometry is preserved. Exact untouched Home defaults adopt the new Everyday composition. Original v1 layout and pin keys are retained for recovery, but pins no longer change presentation. Invalid saved data falls back to Everyday with a notice and does not erase the original value. A failed save keeps the draft open.
 
-Add/remove widgets using Edit Mode. Each manual layout has its own configuration. **Save layout** stores all layouts locally in this browser; **Cancel** discards the draft. **Restore this screen** resets the current draft only. The editor supports up to 12 rows and may scroll when editing a larger board.
+## Attention and simulations
 
-The previous untouched five-widget Home default upgrades to the six-widget default. Customized saved boards remain unchanged; add Around Dallas through Edit Mode if needed. Saved layouts are validated; corrupt data falls back to defaults with a notice. Storage failures leave the draft available.
-
-## Priorities and simulations
-
-Go provides normalized attention events. The TypeScript priority engine remains independent of Svelte and uses an explicit time argument for deterministic calculations. The strongest event wins; modifiers do not accumulate.
+Priority calculations remain pure TypeScript with an explicit time argument. The strongest event for each widget wins; modifiers do not accumulate. Bill reminders use local calendar days.
 
 | Source | Modifiers |
 | --- | --- |
 | Weather | Rain +15, severe +60 |
-| Sports | Today +10, starting +20, live +40, recent final +20 |
+| Sports | Today +10, starting +20, live +40, final +20 |
 | Bills | Within a week +5, within 3 days +15, tomorrow +25, today +35, overdue/alert +40 |
-| Calendar | Today +10, within 2 hours +25, within 30 minutes +50 |
+| Calendar | Today +10, upcoming +25, soon +50 |
 
-Bill events are derived from due dates using local calendar days. The mock list represents outstanding bills; there is no paid-state model yet. Other sources emit events for selected scenarios.
+Ordinary attention outlines a visible widget without changing its geometry or selecting a board. Severe weather can temporarily occupy the display. Its presentation lasts at least 10 seconds and at most 25 seconds, then restores the exact selected board. Consumed alerts do not repeatedly take over; new alerts respect a 65-second cooldown. Final-score priority decays until expiration. Timing and layout projections are independent of Svelte and never modify User Layout.
 
-Ordinary priority events **highlight their widget in place**, with a short attention banner. They do not change the current screen or resize the board. A severe-weather event can temporarily take over the display, then restore the exact configured layout. User Layout and Dynamic Presentation State remain separate. Final-score priority decays linearly until expiration.
-
-**••• → Simulate** opens the development panel. Try rain, severe weather, live basketball, a starting game, a final score, a bill due tomorrow, a financial alert, or a calendar event in 20 minutes. Select **Normal day** to clear the simulated event. Simulations expire after two minutes. The normal mock bill may still have a low-level due-date priority.
-
-The earlier screen scheduling module (`lib/screens.ts`) and its deterministic tests are retained as a reference, but the app no longer calls it. Its cooldowns and display durations have no effect on the stable board.
+**Board name → Simulate** opens the development scenario panel. Try rain, severe weather, live basketball, a starting game, a final score, bill reminders, or an imminent calendar event. **Normal day** clears the simulation. Mock scenarios expire after two minutes. Simulation requires both Vite development mode and `DASHBOARD_DEV=1`; production builds omit the panel and the production API omits the endpoint.
 
 ## Architecture
 
 ```text
-Go mock source functions
-    ↓
-Normalized Go domain models + REST endpoints
-    ↓
-Frontend polling coordinator
-    ↓
-Bill date events + pure priority calculations
-    ↓
-Manual layout selection + pure display projection
-    ↓
-Size-aware Svelte widgets
+Go mock services → normalized REST state
+    → frontend polling → bill events + widget priority engine
+    → manual board selection + temporary presentation manager
+    → bounded layout editor → size-aware Svelte widgets
 ```
 
-Widgets receive props and never fetch APIs. Source data and scenario lifetimes live in Go. The frontend owns browser-specific layouts, pins, orientation, and manual selection. Priority and geometry rules live in independent TypeScript modules. Selecting Hours, Days, or the next event is presentation state inside that widget.
+Widgets receive props and never fetch APIs. Go owns mock source data and scenario lifetimes. The frontend owns local board storage, orientation, drafts, and manual selection. A fixed 24 by 24 grid provides bounded placement and collision validation. The old screen-rotation scheduler and pin projections have been removed.
+
+| File or directory | Responsibility |
+| --- | --- |
+| `backend/internal/domain` | Normalized data and widget definitions |
+| `backend/internal/mock` | Independent mock sources and scenarios |
+| `backend/internal/api` | REST and development gating |
+| `frontend/src/App.svelte` | Polling lifecycle, board state, controls |
+| `frontend/src/lib/boards.ts` | Geometry, presets, validation, migration |
+| `frontend/src/lib/priority.ts` | Deterministic widget ranking, decay, expiration |
+| `frontend/src/lib/presentation.ts` | Bounded fullscreen timing, cooldown, restoration |
+| `frontend/src/components` | Touch grid editor, picker, widget views |
 
 | Method | Path | Result |
 | --- | --- | --- |
-| GET | `/api/state` | Normalized mock state, daily/hourly weather, sample local events, attention events |
-| GET | `/api/widgets` | Widget definitions and minimum/default sizes |
-| GET | `/api/config` | Manual layouts, retained timing metadata, polling interval, development flag |
+| GET | `/api/state` | Normalized mock data and attention events |
+| GET | `/api/widgets` | Widget definitions and minimum/default geometry metadata |
+| GET | `/api/config` | Polling interval and development flag |
 | POST | `/api/scenario` | Development only, e.g. `{"scenario":"severe"}` |
 
-`make dev` and `make backend` enable `DASHBOARD_DEV=1`. Without it, the simulation endpoint does not exist. The panel also requires Vite development mode and is absent from production builds.
+Polling uses a five-second interval with an eight-second timeout and never overlaps requests. Timers clean up on unmount. The last successful state remains visible during outages; the footer reports delay or connection failure. Attention still expires locally. Mock dates are anchored to backend startup rather than advancing on each poll.
 
-Polling runs every five seconds with an eight-second timeout. Requests do not overlap; timers are cleaned up on unmount. The last successful data remains visible during outages with a stale-data notice. Attention expiration still runs locally. Mock dates are anchored to backend startup so polling does not push events into the future; restarting the backend creates a fresh mock day.
+Svelte is the only frontend runtime dependency. Go uses its standard library. No layout or drag libraries, network fonts, databases, or cloud services were added.
 
-## Structure
-
-```text
-backend/
-  cmd/server/                HTTP lifecycle and graceful shutdown
-  internal/domain/           Normalized models and configuration
-  internal/mock/             Separate mock source functions and scenarios
-  internal/api/              REST handlers and development simulation
-frontend/
-  src/App.svelte             Polling, manual layout selection, and controls
-  src/lib/                   API client, bills, priorities, layouts, formatting
-  src/components/            Grid editor and widget switcher
-  src/components/widgets/    Six reusable widgets
-  tests/                     Priority, geometry, persistence-validation tests
-scripts/dev.sh               Starts/stops both local processes
-Makefile                     Development, checks, and builds
-```
-
-Svelte is the only frontend runtime dependency. Vite, TypeScript, Svelte checking, and Prettier are development tools. Go uses its standard library. Tests use Go’s testing package and Node’s built-in runner. There are no external APIs, network fonts, databases, or cloud services.
-
-## Checks and preview
+## Verification
 
 ```sh
-make check   # Go race tests + vet, Svelte/TS checks, Node tests
-make build   # Go binary in /tmp and frontend/dist
+make check   # Go race tests + vet, Svelte/TS checks, Node behavioral tests
+make build   # Go binary in /tmp, frontend build in frontend/dist
 ```
 
 Format with `cd frontend && npm run format`.
 
-For production preview, start the backend without `DASHBOARD_DEV`, build the frontend, then run `npm run preview` in `frontend/`. Open http://127.0.0.1:4173. This is local verification, not a Pi deployment setup.
+Behavioral tests cover scores, date boundaries, expiration/decay, fullscreen bounds/cooldown/restoration, collisions, full-board placement, persistence validation, and custom layout migration. Browser verification covers portrait/landscape bounds, touch placement, size feedback, Save/Cancel, reload persistence, board creation/switching, keyboard moves, interrupted drags, and storage failures. The intended LCD still needs a physical legibility and long-running check.
 
-Behavioral tests cover priority scores, expiration/decay, bill-date boundaries, layout validation, portrait and pin projections, stable board geometry, safe default migration, mock date stability, API validation, and development gating. Historical scheduler tests are also retained. Browser checks exercise portrait/landscape sizing, forecast selection, recommendation paging, and the bills layout. A real extended session on the intended display is still recommended.
-
-## Next milestone
-
-Tune the stable board on the actual portrait LCD before introducing more automatic behavior. A useful next step is a live read-only source for weather or local events, with cached normalized data, source links, filtering preferences, and stale-data handling. Event discovery should distinguish verified listings from personalized ranking. Keep financial integrations and Raspberry Pi deployment out of scope until explicitly requested.
+For a local production preview, run the backend without `DASHBOARD_DEV`, build the frontend, and run `npm run preview` in `frontend/` at http://127.0.0.1:4173. Raspberry Pi deployment and live external sources remain future work.

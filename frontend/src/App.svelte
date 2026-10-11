@@ -15,7 +15,13 @@
     type Orientation,
   } from './lib/boards.ts';
   import { billEvents } from './lib/bills.ts';
-  import { rankScreens } from './lib/priority.ts';
+  import { rankWidgets } from './lib/priority.ts';
+  import {
+    initialPresentation,
+    updatePresentation,
+    attentionFor,
+    displayLayout,
+  } from './lib/presentation.ts';
   import type {
     Config,
     DashboardState,
@@ -52,31 +58,22 @@
   const board = $derived(store.boards.find((b) => b.id === store.activeId)!);
   const saved = $derived(board.layouts[orientation]);
   const ranks = $derived(
-    config
-      ? rankScreens(
-          config.screens,
-          definitions,
-          [
-            ...(dashboard?.events ?? []),
-            ...billEvents(dashboard?.finance.bills ?? [], now),
-          ],
-          now,
-        )
-      : [],
+    rankWidgets(
+      definitions,
+      [
+        ...(dashboard?.events ?? []),
+        ...billEvents(dashboard?.finance.bills ?? [], now),
+      ],
+      now,
+    ),
   );
-  const attention = $derived(
-    ranks.find((c) => c.presentation === 'FULLSCREEN') ??
-      ranks.find(
-        (c) => c.modifier >= 15 && saved.some((p) => p.id === c.widget),
-      ),
-  );
-  const visible = $derived(
-    editing
-      ? draft
-      : attention?.presentation === 'FULLSCREEN' && attention.widget
-        ? [{ id: attention.widget, x: 0, y: 0, w: 24, h: 24 }]
-        : saved,
-  );
+  let presentation = $state(initialPresentation());
+  $effect(() => {
+    const next = updatePresentation(presentation, ranks, now);
+    if (next !== presentation) presentation = next;
+  });
+  const attention = $derived(attentionFor(presentation, ranks, saved));
+  const visible = $derived(editing ? draft : displayLayout(saved, attention));
   const available = $derived(
     pending
       ? validPositions(
@@ -243,9 +240,19 @@
       ...footprint(id, 'small', editOrientation),
       existing: false,
     };
+    void focusPicker();
   }
   function editWidget(item: Placement) {
-    pending = { ...item, size: 'small', existing: true };
+    pending = {
+      ...item,
+      size:
+        item.w >= 14 && item.h >= 12
+          ? 'large'
+          : item.w >= 10 && item.h >= 8
+            ? 'medium'
+            : 'small',
+      existing: true,
+    };
     picker = true;
     void focusPicker();
   }
@@ -261,6 +268,13 @@
     draft = [...draft.filter((p) => p.id !== item.id), { ...item }];
     pending = null;
     picker = false;
+    void tick().then(() =>
+      (
+        document.querySelector(
+          `[data-widget-id="${item.id}"]`,
+        ) as HTMLButtonElement | null
+      )?.focus(),
+    );
   }
   function chooseBoard(id: string) {
     if (!editing && persist({ ...store, activeId: id })) {
@@ -322,7 +336,15 @@
 <svelte:window
   onkeydown={escape}
   onclick={(e) => {
-    if (!(e.target as HTMLElement).closest('.board-selector')) {
+    if (
+      !e
+        .composedPath()
+        .some(
+          (node) =>
+            node instanceof Element &&
+            node.classList.contains('board-selector'),
+        )
+    ) {
       boardMenu = false;
       creating = false;
     }

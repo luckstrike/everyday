@@ -1,79 +1,52 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { eventModifier, rankScreens } from '../src/lib/priority.ts';
-import { initialSession, selectScreen } from '../src/lib/screens.ts';
+import { eventModifier, rankWidgets } from '../src/lib/priority.ts';
 import {
-  defaultLayouts,
-  presentationLayout,
-  parseLayouts,
-  canPlace,
-  addWidget,
-} from '../src/lib/layout.ts';
-import type {
-  AttentionEvent,
-  ScreenDefinition,
-  WidgetDefinition,
-} from '../src/lib/types.ts';
-const screens: ScreenDefinition[] = [
-  ['home', 10],
-  ['weather', 20],
-  ['sports', 20],
-  ['finance', 25],
-].map(([id, basePriority]) => ({
-  id,
-  basePriority,
-  title: id,
-  cooldownMs: id === 'home' ? 0 : 65000,
-  minDurationMs: 10000,
-  maxDurationMs: 25000,
-})) as ScreenDefinition[];
-const widgets: WidgetDefinition[] = [
-  'clock',
-  'weather',
-  'sports',
-  'finance',
-  'calendar',
-  'discover',
-].map((id) => ({
+  initialPresentation,
+  updatePresentation,
+  attentionFor,
+  displayLayout,
+} from '../src/lib/presentation.ts';
+import { initialBoards, widgetIds } from '../src/lib/boards.ts';
+import type { AttentionEvent, WidgetDefinition } from '../src/lib/types.ts';
+const widgets = widgetIds.map((id) => ({
   id,
   title: id,
   basePriority:
-    id === 'clock' ? 10 : id === 'calendar' || id === 'finance' ? 25 : 20,
-  minWidth: 3,
+    id === 'finance' || id === 'calendar' ? 25 : id === 'clock' ? 10 : 20,
+  minWidth: 6,
   minHeight: 2,
   defaultWidth: 4,
   defaultHeight: 3,
-})) as WidgetDefinition[];
+})) satisfies WidgetDefinition[];
 const event = (
-  widget = 'weather',
+  widget: AttentionEvent['widget'] = 'weather',
   kind = 'rain',
   decay = false,
 ): AttentionEvent => ({
   id: `${widget}:${kind}`,
-  widget: widget as AttentionEvent['widget'],
+  widget,
   kind,
   startsAt: new Date(0).toISOString(),
   expiresAt: new Date(120000).toISOString(),
   decay,
 });
 const rank = (now: number, events: AttentionEvent[] = []) =>
-  rankScreens(screens, widgets, events, now);
-test('base priorities and event modifiers are deterministic', () => {
-  assert.deepEqual(
-    rank(0).map((c) => [c.id, c.score]),
-    [
-      ['finance', 25],
-      ['sports', 20],
-      ['weather', 20],
-      ['home', 10],
-    ],
-  );
+  rankWidgets(widgets, events, now);
+test('widget priorities are deterministic and strongest event wins without accumulation', () => {
+  assert.equal(rank(0)[0].id, 'calendar');
   assert.equal(rank(0, [event('sports', 'live')])[0].score, 60);
-  assert.equal(rank(0, [event('finance', 'tomorrow')])[0].score, 50);
-  assert.equal(rank(0, [event('calendar', 'soon')])[0].id, 'home');
+  assert.equal(
+    rank(0, [event('finance', 'tomorrow'), event('finance', 'soon')])[0].score,
+    50,
+  );
   assert.equal(rank(0, [event('calendar', 'soon')])[0].score, 75);
+  assert.deepEqual(
+    rank(0, [event('finance', 'soon'), event('finance', 'tomorrow')]),
+    rank(0, [event('finance', 'tomorrow'), event('finance', 'soon')]),
+  );
 });
-test('events do not start early, expire exactly, and decay linearly', () => {
+test('events do not start early, expire exactly and decay linearly', () => {
   const final = event('sports', 'final', true);
   assert.equal(eventModifier(final, -1), 0);
   assert.equal(eventModifier(final, 0), 20);
@@ -81,163 +54,67 @@ test('events do not start early, expire exactly, and decay linearly', () => {
   assert.equal(eventModifier(final, 120000), 0);
   assert.equal(eventModifier({ ...final, expiresAt: 'invalid' }, 10), 0);
 });
-test('emphasis and fullscreen restore without changing saved layout', () => {
-  const saved = defaultLayouts().home,
+test('attention preserves saved geometry and returns after severe-alert duration', () => {
+  const saved = initialBoards().boards[0].layouts.landscape,
     copy = JSON.stringify(saved);
-  const normal = rank(0).find((c) => c.id === 'home');
-  const severe = rank(0, [event('weather', 'severe')])[0];
-  assert.equal(severe.presentation, 'FULLSCREEN');
-  assert.deepEqual(presentationLayout(saved, severe), [
-    { id: 'weather', x: 0, y: 0, w: 12, h: 6 },
-  ]);
-  assert.equal(rank(0, [event()])[0].presentation, 'EMPHASIZED');
-  assert.equal(JSON.stringify(saved), copy);
-  assert.deepEqual(presentationLayout(saved, normal), saved);
+  let session = updatePresentation(
+    initialPresentation(),
+    rank(0, [event('weather', 'severe')]),
+    0,
+  );
   assert.deepEqual(
-    presentationLayout(
+    displayLayout(saved, attentionFor(session, rank(0), saved)),
+    [{ id: 'weather', x: 0, y: 0, w: 24, h: 24 }],
+  );
+  assert.equal(updatePresentation(session, rank(9999), 9999), session);
+  session = updatePresentation(session, rank(10000), 10000);
+  assert.deepEqual(
+    displayLayout(saved, attentionFor(session, rank(10000), saved)),
+    saved,
+  );
+  assert.deepEqual(
+    displayLayout(
       saved,
-      rank(120000, [event('weather', 'severe')]).find((c) => c.id === 'home'),
+      attentionFor(session, rank(10000, [event('finance', 'tomorrow')]), saved),
     ),
     saved,
   );
+  assert.equal(JSON.stringify(saved), copy);
 });
-test('minimum reading time is respected, even for severe weather', () => {
-  const initial = initialSession(0);
-  assert.equal(
-    selectScreen(
-      initial,
-      rank(9999, [event('weather', 'severe')]),
-      screens,
-      9999,
-    ),
-    initial,
-  );
-  assert.equal(
-    selectScreen(
-      initial,
-      rank(10000, [event('weather', 'severe')]),
-      screens,
-      10000,
-    ).current,
-    'weather',
-  );
-});
-test('maximum duration forces Home even with an ongoing severe alert', () => {
-  let session = selectScreen(
-    initialSession(0),
-    rank(10000, [event('weather', 'severe')]),
-    screens,
-    10000,
-  );
-  session = selectScreen(
-    session,
-    rank(35000, [event('weather', 'severe')]),
-    screens,
-    35000,
-  );
-  assert.equal(session.current, 'home');
-  assert.equal(
-    selectScreen(
-      session,
-      rank(45000, [event('weather', 'severe')]),
-      screens,
-      45000,
-    ).current,
-    'home',
-  );
-});
-test('cooldown is measured from exit and a new urgent event can bypass it once', () => {
-  const initial = { ...initialSession(0), lastShown: { weather: 0 } };
-  assert.equal(
-    selectScreen(initial, rank(10000, [event()]), screens, 10000).current,
-    'home',
-  );
+test('fullscreen is bounded, consumed alerts do not repeat and new alerts respect cooldown', () => {
   const severe = event('weather', 'severe');
-  const selected = selectScreen(initial, rank(10000, [severe]), screens, 10000);
-  assert.equal(selected.current, 'weather');
-  const home = selectScreen(selected, rank(35000, [severe]), screens, 35000);
-  assert.equal(home.lastShown.weather, 35000);
+  let session = updatePresentation(initialPresentation(), rank(0, [severe]), 0);
+  assert.ok(session.active);
+  session = updatePresentation(session, rank(25000, [severe]), 25000);
+  assert.equal(session.active, undefined);
   assert.equal(
-    selectScreen(home, rank(45000, [severe]), screens, 45000).current,
-    'home',
+    updatePresentation(session, rank(90000, [severe]), 90000),
+    session,
+  );
+  const next = {
+    ...severe,
+    id: 'second',
+    startsAt: new Date(25000).toISOString(),
+  };
+  assert.equal(
+    updatePresentation(session, rank(89999, [next]), 89999),
+    session,
+  );
+  assert.ok(updatePresentation(session, rank(90000, [next]), 90000).active);
+});
+test('emphasis only targets visible widgets; severe alerts can appear on an empty board', () => {
+  const session = initialPresentation();
+  assert.equal(
+    attentionFor(session, rank(0, [event('finance', 'tomorrow')]), []),
+    undefined,
+  );
+  const active = updatePresentation(
+    session,
+    rank(0, [event('weather', 'severe')]),
+    0,
   );
   assert.equal(
-    selectScreen(
-      home,
-      rank(45000, [{ ...severe, id: 'new-alert' }]),
-      screens,
-      45000,
-    ).current,
+    displayLayout([], attentionFor(active, rank(0), []))[0].id,
     'weather',
-  );
-});
-test('cleared attention returns to Home after minimum duration', () => {
-  const selected = selectScreen(
-    initialSession(0),
-    rank(10000, [event()]),
-    screens,
-    10000,
-  );
-  assert.equal(selected.current, 'weather');
-  assert.equal(
-    selectScreen(selected, rank(15000), screens, 15000).current,
-    'weather',
-  );
-  assert.equal(
-    selectScreen(selected, rank(20000), screens, 20000).current,
-    'home',
-  );
-});
-test('normal rotation includes all screens and regularly rests at Home', () => {
-  let session = initialSession(0);
-  const visited: string[] = ['home'];
-  for (let now = 1000; now <= 3600000; now += 1000) {
-    const next = selectScreen(session, rank(now), screens, now);
-    if (next.current !== session.current) {
-      assert.ok(now - session.since >= 10000);
-      if (session.current !== 'home') assert.equal(next.current, 'home');
-      visited.push(next.current);
-    }
-    session = next;
-  }
-  assert.deepEqual(
-    new Set(visited),
-    new Set(['home', 'weather', 'sports', 'finance']),
-  );
-  assert.ok(visited.length > 100);
-  assert.ok(session.bypassed.length <= 1);
-});
-test('saved layout validation protects bounds, collisions, unknown IDs and duplicates', () => {
-  const layouts = defaultLayouts();
-  assert.deepEqual(parseLayouts(JSON.stringify(layouts), widgets), layouts);
-  for (const bad of [
-    { ...layouts.home[0], w: 13 },
-    { ...layouts.home[0], x: -1 },
-    { ...layouts.home[0], id: 'oops' },
-    { ...layouts.home[0], x: 7 },
-  ])
-    assert.throws(() =>
-      parseLayouts(
-        JSON.stringify({ ...layouts, home: [bad, ...layouts.home.slice(1)] }),
-        widgets,
-      ),
-    );
-  assert.throws(() =>
-    parseLayouts(
-      JSON.stringify({ ...layouts, home: [layouts.home[0], layouts.home[0]] }),
-      widgets,
-    ),
-  );
-  assert.equal(
-    canPlace({ ...layouts.home[0], w: 3 }, layouts.home, widgets),
-    true,
-  );
-  const removed = layouts.home.filter((p) => p.id !== 'sports');
-  assert.equal(
-    addWidget(
-      removed,
-      widgets.find((w) => w.id === 'sports')!,
-    )?.length,
-    6,
   );
 });
