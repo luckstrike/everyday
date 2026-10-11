@@ -489,7 +489,7 @@
       </div>
       <div class="header-tools">
         <span class="header-location"
-          ><Icon name="map" size={16} />{dashboard?.weather.location ??
+          ><Icon name="discover" size={16} />{dashboard?.weather.location ??
             'Dallas, TX'}</span
         ><DisplaySettings {theme} onchange={chooseTheme} />
       </div>{/if}

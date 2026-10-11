@@ -1,7 +1,6 @@
 <script lang="ts">
   let { name, size = 24 }: { name: string; size?: number } = $props();
   const paths: Record<string, string> = {
-    map: 'M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z M9 3v15 M15 6v15',
     edit: 'M15 5l4 4 M4 16l-1 5 5-1L20 8a2.8 2.8 0 0 0-4-4L4 16',
     settings:
       'M9 3h6l.5 2.5 2 1.2 2.4-.8 2 3.5-1.9 1.6v2l1.9 1.6-2 3.5-2.4-.8-2 1.2L15 21H9l-.5-2.5-2-1.2-2.4.8-2-3.5L4 13v-2L2.1 9.4l2-3.5 2.4.8 2-1.2L9 3 M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
