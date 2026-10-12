@@ -132,6 +132,15 @@
     max-width: 60ch;
     line-height: 1.4;
   }
+  @container (max-height: 320px) {
+    .has-alert .forecast-strip,
+    .has-alert .forecast-toggle {
+      display: none;
+    }
+    .has-alert .weather-current {
+      padding-right: 0;
+    }
+  }
   @container (max-height:230px) {
     .widget-body.weather {
       --weather-inset: 24px;
@@ -171,11 +180,6 @@
     }
     .has-alert .alert-copy {
       font-size: 14px;
-      display: -webkit-box;
-      -webkit-line-clamp: 1;
-      line-clamp: 1;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
     .has-alert.widget-body.weather {
       gap: 8px;
@@ -286,6 +290,14 @@
     .forecast-toggle {
       top: 2px;
       right: 8px;
+    }
+    .has-alert .weather-current {
+      display: none;
+    }
+  }
+  @container (max-height: 100px) {
+    .has-alert .alert-copy {
+      font-size: 12px;
     }
   }
 </style>

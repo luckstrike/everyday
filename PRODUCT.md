@@ -40,7 +40,7 @@ Implement the approved Paper prototypes in the existing Svelte application. Keep
 
 ## Board and Editing Behavior
 
-The board name replaces the house icon and opens a board picker. Additional boards are named, saved layouts, each with its own widget arrangement. Boards change only when the user explicitly selects one; priority events never choose or rotate boards. Ordinary priority events can emphasize a widget in place while preserving the user's layout.
+The board name replaces the house icon and opens a board picker. Additional boards are named, saved layouts, each with its own widget arrangement. Boards change only when the user explicitly selects one; priority events never choose or rotate boards. All priority events, including severe weather, emphasize a visible widget in place while preserving the user's layout. Fullscreen takeovers are disabled; absent widgets are never inserted automatically.
 
 Each board fits one screen. Neither manual scrolling nor automatic scrolling is part of the wall-display experience. Adding or resizing widgets must preserve a layout that fits the screen; a draft that does not fit should be corrected before saving. Smaller widgets show deliberately reduced content. Additional information can go on another manually selected board.
 

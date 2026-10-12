@@ -14,12 +14,16 @@ export interface PresentationSession {
 export function initialPresentation(): PresentationSession {
   return { since: 0, lastEnded: {}, handled: [] };
 }
-// Only a severe alert can temporarily occupy the board. Board identity never changes.
+// Ambient boards emphasize in place. Fullscreen timing remains available only
+// through an explicit policy opt-in; priority alone never changes the layout.
 export function updatePresentation(
   session: PresentationSession,
   ranks: Candidate[],
   now: number,
+  allowFullscreen = false,
 ): PresentationSession {
+  if (!allowFullscreen)
+    return session.active ? { ...session, active: undefined } : session;
   if (session.active) {
     const elapsed = now - session.since;
     const ongoing = ranks.some(

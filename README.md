@@ -27,15 +27,15 @@ Use the settings icon beside **Dallas, TX** to choose **Evergreen** or **Turquoi
 
 ## Touch editing
 
-**Add widget** opens a draft editor and the catalog. **Board name → Edit layout** opens the editor without the catalog.
+**Add widget** opens a draft editor and the catalog. **Edit layout** beside it opens the editor without the catalog.
 
-1. Select an available widget. Nothing is reserved or highlighted before selection.
-2. Choose Small, Medium, or Large. The preview shows the actual footprint and whether it fits.
-3. Tap a highlighted position to place it. Occupied space is protected.
+1. Select a widget, or choose **Edit** on a widget already on the board. Nothing is reserved or highlighted before selection.
+2. Choose Small, Medium, or Large. Existing custom dimensions have a **Current** option, so opening the editor never changes their size. Each preset reports whether it fits.
+3. **Choose position** clears the picker away. Tap a highlighted position to place it; **Widget options** reopens the size controls. Occupied space is protected.
 4. Tap a widget’s upper-right handle to move it, choose another size, or remove it. You can also drag its handle, or focus it and use arrow keys for precise moves.
 5. **Save layout** persists this orientation in this browser. **Cancel** restores the saved layout.
 
-When a size cannot fit, choose a smaller size or explicitly resize/remove another widget. If all sizes fail, cancel editing and use another board. The editor never overlaps tiles or extends the board to force placement. Catalogs and menus may scroll independently. Touch controls are at least 44px. Escape closes placement/picker/menu controls. Browser navigation warns while a draft is open.
+When a size cannot fit, choose a smaller size or go back to edit another widget and make room. The editor never overlaps tiles or extends the board to force placement. Catalogs and menus may scroll independently. Touch controls are at least 44px. Escape closes placement/picker/menu controls. Cancel confirms before discarding changed layouts; browser navigation warns only for actual unsaved changes.
 
 Saved boards use `apartment-display.boards.v2` in localStorage. Old v1 layouts migrate into named boards; custom landscape geometry is preserved. Exact untouched Home defaults adopt the new Everyday composition. Original v1 layout and pin keys are retained for recovery, but pins no longer change presentation. Invalid saved data falls back to Everyday with a notice and does not erase the original value. A failed save keeps the draft open.
 
@@ -50,7 +50,7 @@ Priority calculations remain pure TypeScript with an explicit time argument. The
 | Bills | Within a week +5, within 3 days +15, tomorrow +25, today +35, overdue/alert +40 |
 | Calendar | Today +10, upcoming +25, soon +50 |
 
-Ordinary attention outlines a visible widget without changing its geometry or selecting a board. Severe weather can temporarily occupy the display. Its presentation lasts at least 10 seconds and at most 25 seconds, then restores the exact selected board. Consumed alerts do not repeatedly take over; new alerts respect a 65-second cooldown. Final-score priority decays until expiration. Timing and layout projections are independent of Svelte and never modify User Layout.
+All attention, including severe weather, outlines a visible widget without changing its geometry or selecting a board. The border pulses three times and then stays accented until attention ends; reduced motion uses a steady border. Compact weather prioritizes alert text over the forecast. An absent Weather widget is never inserted automatically. Final-score priority decays until expiration. The presentation engine retains tested fullscreen timing (10–25 seconds, 65-second cooldown) behind an explicit policy opt-in, disabled for this dashboard. Timing and layout projections are independent of Svelte and never modify User Layout.
 
 **Board name → Simulate** opens the development scenario panel. Try rain, severe weather, live basketball, a starting game, a final score, bill reminders, or an imminent calendar event. **Normal day** clears the simulation. Mock scenarios expire after two minutes. Simulation requires both Vite development mode and `DASHBOARD_DEV=1`; production builds omit the panel and the production API omits the endpoint.
 

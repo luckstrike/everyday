@@ -1,8 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { eventModifier, rankWidgets } from '../src/lib/priority.ts';
+import {
+  eventModifier,
+  rankWidgets,
+  type Candidate,
+} from '../src/lib/priority.ts';
 import {
   initialPresentation,
+  type PresentationSession,
   updatePresentation,
   attentionFor,
   displayLayout,
@@ -33,6 +38,31 @@ const event = (
 });
 const rank = (now: number, events: AttentionEvent[] = []) =>
   rankWidgets(widgets, events, now);
+const updateAlertPresentation = (
+  session: PresentationSession,
+  ranks: Candidate[],
+  now: number,
+) => updatePresentation(session, ranks, now, true);
+test('ambient policy keeps severe alerts in place and does not add absent widgets', () => {
+  const saved = initialBoards().boards[0].layouts.portrait;
+  const original = JSON.stringify(saved);
+  const ranks = rank(0, [event('weather', 'severe')]);
+  const session = updatePresentation(initialPresentation(), ranks, 0);
+  assert.equal(session.active, undefined);
+  assert.equal(attentionFor(session, ranks, saved)?.presentation, 'EMPHASIZED');
+  assert.deepEqual(
+    displayLayout(saved, attentionFor(session, ranks, saved)),
+    saved,
+  );
+  assert.equal(attentionFor(session, ranks, []), undefined);
+  assert.equal(
+    attentionFor(session, rank(120000, [event('weather', 'severe')]), saved),
+    undefined,
+  );
+  assert.equal(JSON.stringify(saved), original);
+  const active = updateAlertPresentation(initialPresentation(), ranks, 0);
+  assert.equal(updatePresentation(active, ranks, 1).active, undefined);
+});
 test('widget priorities are deterministic and strongest event wins without accumulation', () => {
   assert.equal(rank(0)[0].id, 'calendar');
   assert.equal(rank(0, [event('sports', 'live')])[0].score, 60);
@@ -54,10 +84,10 @@ test('events do not start early, expire exactly and decay linearly', () => {
   assert.equal(eventModifier(final, 120000), 0);
   assert.equal(eventModifier({ ...final, expiresAt: 'invalid' }, 10), 0);
 });
-test('attention preserves saved geometry and returns after severe-alert duration', () => {
+test('opt-in fullscreen preserves geometry and restores after minimum duration', () => {
   const saved = initialBoards().boards[0].layouts.landscape,
     copy = JSON.stringify(saved);
-  let session = updatePresentation(
+  let session = updateAlertPresentation(
     initialPresentation(),
     rank(0, [event('weather', 'severe')]),
     0,
@@ -66,8 +96,8 @@ test('attention preserves saved geometry and returns after severe-alert duration
     displayLayout(saved, attentionFor(session, rank(0), saved)),
     [{ id: 'weather', x: 0, y: 0, w: 24, h: 24 }],
   );
-  assert.equal(updatePresentation(session, rank(9999), 9999), session);
-  session = updatePresentation(session, rank(10000), 10000);
+  assert.equal(updateAlertPresentation(session, rank(9999), 9999), session);
+  session = updateAlertPresentation(session, rank(10000), 10000);
   assert.deepEqual(
     displayLayout(saved, attentionFor(session, rank(10000), saved)),
     saved,
@@ -81,14 +111,18 @@ test('attention preserves saved geometry and returns after severe-alert duration
   );
   assert.equal(JSON.stringify(saved), copy);
 });
-test('fullscreen is bounded, consumed alerts do not repeat and new alerts respect cooldown', () => {
+test('opt-in fullscreen is bounded, consumed alerts do not repeat and new alerts respect cooldown', () => {
   const severe = event('weather', 'severe');
-  let session = updatePresentation(initialPresentation(), rank(0, [severe]), 0);
+  let session = updateAlertPresentation(
+    initialPresentation(),
+    rank(0, [severe]),
+    0,
+  );
   assert.ok(session.active);
-  session = updatePresentation(session, rank(25000, [severe]), 25000);
+  session = updateAlertPresentation(session, rank(25000, [severe]), 25000);
   assert.equal(session.active, undefined);
   assert.equal(
-    updatePresentation(session, rank(90000, [severe]), 90000),
+    updateAlertPresentation(session, rank(90000, [severe]), 90000),
     session,
   );
   const next = {
@@ -97,18 +131,20 @@ test('fullscreen is bounded, consumed alerts do not repeat and new alerts respec
     startsAt: new Date(25000).toISOString(),
   };
   assert.equal(
-    updatePresentation(session, rank(89999, [next]), 89999),
+    updateAlertPresentation(session, rank(89999, [next]), 89999),
     session,
   );
-  assert.ok(updatePresentation(session, rank(90000, [next]), 90000).active);
+  assert.ok(
+    updateAlertPresentation(session, rank(90000, [next]), 90000).active,
+  );
 });
-test('emphasis only targets visible widgets; severe alerts can appear on an empty board', () => {
+test('emphasis ignores absent widgets; opt-in fullscreen may show alerts', () => {
   const session = initialPresentation();
   assert.equal(
     attentionFor(session, rank(0, [event('finance', 'tomorrow')]), []),
     undefined,
   );
-  const active = updatePresentation(
+  const active = updateAlertPresentation(
     session,
     rank(0, [event('weather', 'severe')]),
     0,
