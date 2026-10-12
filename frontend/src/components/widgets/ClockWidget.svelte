@@ -194,6 +194,27 @@
       gap: 8px;
     }
   }
+  @container (max-width: 250px) and (min-height: 101px) {
+    .clock-date-block {
+      position: relative;
+      padding-right: 32px;
+    }
+    .clock-date {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      font-size: 14px;
+    }
+    .clock-date span + span {
+      font-size: 14px;
+    }
+    .month-trigger {
+      position: absolute;
+      right: -8px;
+      bottom: -6px;
+      margin: 0;
+    }
+  }
   @container (max-height: 100px) {
     .clock-summary {
       flex-direction: row;

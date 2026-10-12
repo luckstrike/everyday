@@ -376,8 +376,16 @@
   function escape(event: KeyboardEvent) {
     if (event.key !== 'Escape') return;
     if (discardOpen) return;
-    if (pending) pending = null;
-    else if (picker) closePicker();
+    if (pending) {
+      pending = null;
+      if (picker) void focusPicker();
+      else
+        void tick().then(() =>
+          (
+            document.querySelector('.add-widget') as HTMLButtonElement | null
+          )?.focus(),
+        );
+    } else if (picker) closePicker();
     else {
       boardMenu = false;
       devPanel = false;

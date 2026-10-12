@@ -151,7 +151,7 @@ test('preset recognition is exact and orientation-specific, preserving custom di
       landscape.find((p) => p.id === 'sports')!,
       'landscape',
     ),
-    null,
+    'small',
   );
   assert.equal(
     presetSize(
@@ -164,4 +164,27 @@ test('preset recognition is exact and orientation-specific, preserving custom di
     presetSize({ id: 'clock', x: 0, y: 0, w: 13, h: 11 }, 'landscape'),
     null,
   );
+});
+
+test('the compact sports strip fits back into the gap left by its removal', () => {
+  for (const orientation of ['portrait', 'landscape'] as const) {
+    const saved = initialBoards().boards[0].layouts[orientation];
+    const sports = saved.find((p) => p.id === 'sports')!;
+    const positions = validPositions(
+      'sports',
+      'small',
+      orientation,
+      saved.filter((p) => p.id !== 'sports'),
+      definitions,
+    );
+    assert.ok(
+      positions.some(
+        (p) =>
+          p.x === sports.x &&
+          p.y === sports.y &&
+          p.w === sports.w &&
+          p.h === sports.h,
+      ),
+    );
+  }
 });

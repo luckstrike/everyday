@@ -92,6 +92,10 @@ export function footprint(
   size: Size,
   orientation: Orientation,
 ): Pick<Placement, 'w' | 'h'> {
+  // Sports has a useful compact strip; removing it must leave enough room to
+  // add that same presentation back without resizing unrelated widgets.
+  if (id === 'sports' && size === 'small')
+    return { w: 24, h: orientation === 'portrait' ? 3 : 4 };
   if (orientation === 'portrait' && id === 'weather')
     return { w: 24, h: size === 'small' ? 6 : size === 'medium' ? 8 : 12 };
   if (orientation === 'portrait')

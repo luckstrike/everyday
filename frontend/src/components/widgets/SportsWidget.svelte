@@ -31,3 +31,37 @@
   </div>
   {#if size === 'large'}<p class="quiet">{data.league} · Mock game</p>{/if}
 </div>
+
+<style>
+  @container (max-height: 64px) {
+    .sports {
+      padding: 8px 16px;
+    }
+    .sports .eyebrow,
+    .sports-meta .quiet {
+      display: none;
+    }
+    .sports .widget-title,
+    .sports-meta > p:first-child {
+      font-size: 16px;
+    }
+    :global(.editing) .sports-meta {
+      padding-right: 32px;
+    }
+  }
+  @container (max-width: 340px) and (max-height: 150px) {
+    .sports {
+      gap: 8px;
+    }
+    .sports .eyebrow {
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .sports-meta > p:first-child {
+      font-size: 14px;
+    }
+    .sports-meta .quiet {
+      display: none;
+    }
+  }
+</style>

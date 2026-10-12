@@ -14,13 +14,13 @@
 <div class="widget-body finance">
   <p class="eyebrow">Next bill</p>
   {#if bills[0]}<div class="bill-summary">
-      <p class="widget-title">{bills[0].name}</p>
+      <p class="widget-title" title={bills[0].name}>{bills[0].name}</p>
       <p class="bill-amount">{money(bills[0].amount)}</p>
     </div>
     <p class="quiet">
-      {day(bills[0].dueAt, now)} · {bills[0].autopay
-        ? 'Autopay on'
-        : 'Manual payment'}
+      {day(bills[0].dueAt, now)}<span class="payment-method">
+        · {bills[0].autopay ? 'Autopay on' : 'Manual payment'}</span
+      >
     </p>
     {#if size === 'large'}<div class="bill-list">
         {#each bills.slice(1, 4) as bill}<div>
@@ -31,3 +31,18 @@
       </div>{/if}{:else}<p class="widget-title">All clear</p>
     <p class="quiet">No upcoming bills.</p>{/if}
 </div>
+
+<style>
+  .bill-summary .widget-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @container (max-height: 120px) {
+    .finance .eyebrow,
+    .payment-method {
+      display: none;
+    }
+  }
+</style>

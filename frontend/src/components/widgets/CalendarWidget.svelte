@@ -15,7 +15,9 @@
 
 <div class="widget-body calendar">
   <p class="eyebrow">Up next</p>
-  {#if events[0]}<p class="widget-title">{events[0].title}</p>
+  {#if events[0]}<p class="widget-title" title={events[0].title}>
+      {events[0].title}
+    </p>
     <p class="quiet accent">
       {day(events[0].startsAt, now)} · {time(events[0].startsAt)}
     </p>
@@ -28,3 +30,27 @@
     </p>
     <p class="quiet">No upcoming events.</p>{/if}
 </div>
+
+<style>
+  .widget-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  @container (max-height: 120px) {
+    .calendar .eyebrow {
+      display: none;
+    }
+    .widget-title {
+      -webkit-line-clamp: 1;
+      line-clamp: 1;
+    }
+  }
+  @container (max-width: 210px) and (max-height: 150px) {
+    .calendar .eyebrow {
+      display: none;
+    }
+  }
+</style>

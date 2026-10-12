@@ -52,7 +52,7 @@
     <p class="quiet">
       {selected
         ? 'Choose a size, then a position on the board.'
-        : 'Tap a widget to see where it fits. Choose Edit to move, resize or remove one already on the board.'}
+        : 'Select a widget to preview its position, or edit one already on your board.'}
     </p>
   </div>
   {#if selected}
@@ -71,7 +71,11 @@
           class:selected={size === value}
           aria-pressed={size === value}
           onclick={() => onsize(value as Size)}
-          >{value}<small>{fits[value as Size] ? 'Fits' : 'No room'}</small
+          >{value}<small
+            >{fits[value as Size] ? 'Fits' : 'No room'}{selected === 'sports' &&
+            value === 'small'
+              ? ' · Strip'
+              : ''}</small
           ></button
         >{/each}
     </div>

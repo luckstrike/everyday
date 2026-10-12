@@ -42,6 +42,9 @@
   let feedback = $state('');
   let cleanup = () => {};
   let dragged = false;
+  $effect(() => {
+    if (!editing) feedback = '';
+  });
   const hints = $derived.by(() => {
     const result: Placement[] = [];
     for (const item of previews)
@@ -141,7 +144,10 @@
           onpointerdown={(e) => pointer(e, item)}
           onkeydown={(e) => keyboard(e, item)}
           onclick={() => {
-            if (!dragged) onselect(item);
+            if (!dragged) {
+              feedback = '';
+              onselect(item);
+            }
             dragged = false;
           }}><Icon name="grip" size={18} /></button
         >{/if}

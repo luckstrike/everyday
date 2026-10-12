@@ -718,6 +718,10 @@ footer > span {
   }
 }
 @container (max-height: 150px) {
+  .move-handle {
+    align-items: flex-start;
+    padding-top: 2px;
+  }
   .widget-body {
     gap: 8px;
     padding: 16px 20px;
@@ -741,10 +745,6 @@ footer > span {
   }
 }
 @container (max-height: 100px) {
-  .move-handle {
-    align-items: flex-start;
-    padding-top: 2px;
-  }
   .widget-body {
     padding: 10px 16px;
     gap: 4px;
@@ -856,6 +856,14 @@ footer > span {
   *::before,
   *::after {
     scroll-behavior: auto !important;
+  }
+}
+@media (max-height: 520px) and (min-width: 601px) {
+  main {
+    --gap: 12px;
+    --pad: 14px;
+    gap: 10px;
+    grid-template-rows: 44px minmax(0, 1fr) 44px;
   }
 }
 .add-widget.picker-open:hover:not(:disabled) {
