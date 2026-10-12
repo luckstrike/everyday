@@ -17,6 +17,7 @@
     validPositions,
     footprint,
     layoutsEqual,
+    presetSize,
     type BoardStore,
     type Orientation,
   } from './lib/boards.ts';
@@ -55,7 +56,7 @@
   let discardOpen = $state(false);
   let pending = $state<{
     id: WidgetId;
-    size: Size;
+    size: Size | null;
     w: number;
     h: number;
     existing: boolean;
@@ -106,7 +107,7 @@
     pending
       ? validPositions(
           pending.id,
-          pending.size,
+          pending.size ?? 'small',
           editOrientation,
           draft.filter((p) => p.id !== pending?.id),
           definitions,
@@ -125,9 +126,7 @@
             editOrientation,
             draft.filter((p) => p.id !== pending?.id),
             definitions,
-            size === pending.size
-              ? { w: pending.w, h: pending.h }
-              : footprint(pending.id, size, editOrientation),
+            footprint(pending.id, size, editOrientation),
           ).length > 0;
     return result;
   });
@@ -281,6 +280,11 @@
     }
   }
   function chooseWidget(id: WidgetId) {
+    const existing = draft.find((item) => item.id === id);
+    if (existing) {
+      editWidget(existing);
+      return;
+    }
     pending = {
       id,
       size: 'small',
@@ -292,23 +296,21 @@
   function editWidget(item: Placement) {
     pending = {
       ...item,
-      size:
-        item.w >= 14 && item.h >= 12
-          ? 'large'
-          : item.w >= 10 && item.h >= 8
-            ? 'medium'
-            : 'small',
+      size: presetSize(item, editOrientation),
       existing: true,
     };
     picker = true;
     void focusPicker();
   }
-  function sizeWidget(size: Size) {
-    if (pending)
+  function sizeWidget(size: Size | null) {
+    const current = draft.find((item) => item.id === pending?.id);
+    if (pending && (size || current))
       pending = {
         ...pending,
         size,
-        ...footprint(pending.id, size, editOrientation),
+        ...(size
+          ? footprint(pending.id, size, editOrientation)
+          : { w: current!.w, h: current!.h }),
       };
   }
   function place(item: Placement) {
@@ -537,10 +539,18 @@
         class="add-widget"
         class:picker-open={picker}
         disabled={!dashboard}
-        onclick={() => (picker ? closePicker() : beginEdit())}
+        onclick={() => {
+          if (picker) closePicker();
+          else if (pending) {
+            picker = true;
+            void focusPicker();
+          } else beginEdit();
+        }}
         ><Icon name={picker ? 'close' : 'plus'} size={16} />{picker
           ? 'Close picker'
-          : 'Add widget'}</button
+          : pending
+            ? 'Widget options'
+            : 'Add widget'}</button
       >
     </div>
   </footer>
@@ -552,11 +562,27 @@
   {#if picker}<WidgetPicker
       items={draft}
       selected={pending?.id ?? null}
-      size={pending?.size ?? 'small'}
+      size={pending?.size ?? null}
       existing={pending?.existing ?? false}
+      custom={!!pending?.existing &&
+        presetSize(
+          draft.find((item) => item.id === pending?.id)!,
+          editOrientation,
+        ) === null}
+      canFit={available.length > 0}
       {fits}
       onchoose={chooseWidget}
       onsize={sizeWidget}
+      onpreview={() => {
+        picker = false;
+        void tick().then(() =>
+          (
+            document.querySelector(
+              '.placement-preview',
+            ) as HTMLButtonElement | null
+          )?.focus(),
+        );
+      }}
       onclose={closePicker}
       onback={() => (pending = null)}
       onremove={() => {
@@ -568,6 +594,11 @@
         }
         pending = null;
         picker = false;
+        void tick().then(() =>
+          (
+            document.querySelector('.add-widget') as HTMLButtonElement | null
+          )?.focus(),
+        );
       }}
     />{/if}
   {#if devPanel}<aside

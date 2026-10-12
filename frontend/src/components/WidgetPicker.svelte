@@ -7,20 +7,26 @@
     selected,
     size,
     existing,
+    custom,
+    canFit,
     fits,
     onchoose,
     onsize,
+    onpreview,
     onclose,
     onback,
     onremove,
   }: {
     items: Placement[];
     selected: WidgetId | null;
-    size: Size;
+    size: Size | null;
     existing: boolean;
+    custom: boolean;
+    canFit: boolean;
     fits: Record<Size, boolean>;
     onchoose: (id: WidgetId) => void;
-    onsize: (size: Size) => void;
+    onsize: (size: Size | null) => void;
+    onpreview: () => void;
     onclose: () => void;
     onback: () => void;
     onremove: () => void;
@@ -45,12 +51,22 @@
     </div>
     <p class="quiet">
       {selected
-        ? 'Tap a highlighted position to place it.'
-        : 'Tap a widget to see where it fits.'}
+        ? 'Choose a size, then a position on the board.'
+        : 'Tap a widget to see where it fits. Choose Edit to move, resize or remove one already on the board.'}
     </p>
   </div>
   {#if selected}
-    <div class="size-options" aria-label="Widget size">
+    <div
+      class="size-options"
+      class:has-current={custom}
+      aria-label="Widget size"
+    >
+      {#if custom}<button
+          class:selected={size === null}
+          aria-pressed={size === null}
+          onclick={() => onsize(null)}
+          >Current<small>Keep your size</small></button
+        >{/if}
       {#each ['small', 'medium', 'large'] as value}<button
           class:selected={size === value}
           aria-pressed={size === value}
@@ -59,11 +75,14 @@
           ></button
         >{/each}
     </div>
-    {#if !fits[size]}<p class="placement-message" role="status">
+    {#if !canFit}<p class="placement-message" role="status">
         {Object.values(fits).some(Boolean)
           ? 'This size won’t fit. Choose a smaller size, or resize another widget.'
-          : 'This board is full. Remove or resize a widget, or cancel and create another board.'}
+          : 'No open area fits this widget. Go back to edit another widget and make room, or cancel to choose another board.'}
       </p>{/if}
+    {#if canFit}<button class="primary" onclick={onpreview}
+        >Choose position<Icon name="arrow" size={18} /></button
+      >{/if}
     <div class="picker-actions">
       <button onclick={onback}>Back to widgets</button>{#if existing}<button
           class="danger"
@@ -76,13 +95,13 @@
           (p) => p.id === widget.id,
         )}<button
           class="catalog-row"
-          disabled={present}
+          class:on-board={present}
           onclick={() => onchoose(widget.id)}
           ><Icon name={widget.id} /><span
             ><strong>{widget.title}</strong><small>{widget.description}</small
             ></span
           ><span class:select-label={!present}
-            >{present ? 'On board' : 'Select'}</span
+            >{present ? 'Edit' : 'Select'}</span
           ></button
         >{/each}
     </div>

@@ -119,6 +119,17 @@ export function validPositions(
     }
   return result;
 }
+// Presets describe geometry, not the amount of content a widget displays.
+export function presetSize(
+  item: Placement,
+  orientation: Orientation,
+): Size | null {
+  for (const size of ['small', 'medium', 'large'] as Size[]) {
+    const shape = footprint(item.id, size, orientation);
+    if (item.w === shape.w && item.h === shape.h) return size;
+  }
+  return null;
+}
 function validLayout(
   items: unknown,
   definitions: WidgetDefinition[],

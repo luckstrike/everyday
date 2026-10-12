@@ -9,6 +9,7 @@ import {
   migrateLayouts,
   widgetIds,
   layoutsEqual,
+  presetSize,
 } from '../src/lib/boards.ts';
 import type { WidgetDefinition } from '../src/lib/types.ts';
 const definitions = widgetIds.map((id) => ({
@@ -131,5 +132,36 @@ test('migration never resets a rearranged six-widget default', () => {
   assert.deepEqual(
     migrated.boards[0].layouts.landscape,
     home.map((p) => ({ ...p, x: p.x * 2, y: p.y * 4, w: p.w * 2, h: p.h * 4 })),
+  );
+});
+
+test('preset recognition is exact and orientation-specific, preserving custom dimensions', () => {
+  for (const orientation of ['portrait', 'landscape'] as const) {
+    for (const id of widgetIds) {
+      for (const size of ['small', 'medium', 'large'] as const) {
+        const item = { id, x: 0, y: 0, ...footprint(id, size, orientation) };
+        assert.equal(presetSize(item, orientation), size);
+      }
+    }
+  }
+  const { portrait, landscape } = initialBoards().boards[0].layouts;
+  assert.equal(presetSize(portrait[0], 'portrait'), 'medium');
+  assert.equal(
+    presetSize(
+      landscape.find((p) => p.id === 'sports')!,
+      'landscape',
+    ),
+    null,
+  );
+  assert.equal(
+    presetSize(
+      landscape.find((p) => p.id === 'weather')!,
+      'landscape',
+    ),
+    null,
+  );
+  assert.equal(
+    presetSize({ id: 'clock', x: 0, y: 0, w: 13, h: 11 }, 'landscape'),
+    null,
   );
 });

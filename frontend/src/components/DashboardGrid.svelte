@@ -77,7 +77,7 @@
     const move = (e: PointerEvent) => {
       const dx = Math.round((e.clientX - startX) / (rect.width / GRID)),
         dy = Math.round((e.clientY - startY) / (rect.height / GRID));
-      if (dx || dy) {
+      if (dx || dy || dragged) {
         dragged = true;
         change(item, { x: item.x + dx, y: item.y + dy });
       }
@@ -158,8 +158,11 @@
       <span>Tap Add widget to start this board.</span>
     </div>{/if}
 </div>
+{#if editing && feedback}<p class="grid-feedback" role="status">
+    {feedback}
+  </p>{/if}
 <span class="sr-only" role="status"
-  >{feedback}{pendingId && previews.length
+  >{pendingId && previews.length
     ? ` ${hints.length} available placement areas.`
     : ''}</span
 >
