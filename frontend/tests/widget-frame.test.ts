@@ -234,3 +234,64 @@ test('Weather replaces cached conditions with source notices and hides its toggl
     }
   }
 });
+
+test('temperature ranges show low before high with an accessible arrow alternative', async () => {
+  const { default: TemperatureRange } = await server.ssrLoadModule(
+    '/src/components/TemperatureRange.svelte',
+  );
+
+  for (const [low, high] of [
+    [62, 78],
+    [-12, -4],
+    [89, 104],
+  ]) {
+    const { body } = render(TemperatureRange, { props: { low, high } });
+
+    assert.ok(body.indexOf(`${low}°`) < body.indexOf(`${high}°`));
+    assert.match(body, />Low <\/span>/);
+    assert.match(body, /> to high <\/span>/);
+    assert.match(body, /<svg[^>]*aria-hidden="true"/);
+    assert.match(body, /M4 12h16m-6-6 6 6-6 6/);
+  }
+});
+
+test('Weather shows five days with low-to-high ranges, starting with today', async () => {
+  const { default: WeatherWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/WeatherWidget.svelte',
+  );
+  const data = {
+    location: 'Dallas',
+    temperature: 72,
+    condition: 'Clear',
+    high: 90,
+    low: 55,
+    precipitation: 0,
+    tomorrow: 'Clear',
+    hourly: [],
+    daily: Array.from({ length: 6 }, (_, index) => ({
+      date: new Date(Date.UTC(2026, 10, 11 + index, 12)).toISOString(),
+      high: 80 + index,
+      low: 60 + index,
+      condition: 'Clear',
+      precipitation: 0,
+    })),
+    alert: '',
+  };
+  const { body } = render(WeatherWidget, {
+    props: { data, status: 'live', size: 'medium' },
+  });
+  const days = [
+    ...body.matchAll(/<div class="forecast-day[^\"]*">([\s\S]*?)<\/div>/g),
+  ];
+
+  assert.equal(days.length, 5);
+  assert.match(days[0][1], /Today/);
+  for (const [index, day] of days.entries()) {
+    assert.ok(day[1].includes(`${60 + index}°`));
+    assert.ok(day[1].includes(`${80 + index}°`));
+    assert.ok(
+      day[1].indexOf(`${60 + index}°`) < day[1].indexOf(`${80 + index}°`),
+    );
+  }
+  assert.doesNotMatch(body, /65°|85°/);
+});

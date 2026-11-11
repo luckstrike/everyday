@@ -79,7 +79,7 @@ The MVP is a landscape-only display with one fixed layout and five widgets:
 | --- | --- |
 | Clock | Time, weekday, and date |
 | Month calendar | The current month, or only the current week when the widget is short |
-| Weather | Current conditions with a daily or hourly forecast (the **Days / Hours** button switches it in place) and any alert |
+| Weather | Current conditions with a five-day forecast (today plus four days), low → high temperature ranges, an hourly view via the **Days / Hours** button, and any alert |
 | Up next | Your next calendar event |
 | Bills | The next bill, with a due date and autopay status |
 

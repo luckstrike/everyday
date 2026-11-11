@@ -2,6 +2,7 @@
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import Icon from '../Icon.svelte';
   import WidgetFrame from '../WidgetFrame.svelte';
+  import TemperatureRange from '../TemperatureRange.svelte';
   import { sourceNotice } from '../../lib/sources.ts';
   let {
     data,
@@ -36,23 +37,27 @@
       ><span class="temperature">{data.temperature}°</span>
       <div>
         <p class="widget-title">{data.condition}</p>
-        <p class="quiet">High {data.high}° · Low {data.low}°</p>
+        <p class="quiet">
+          <TemperatureRange low={data.low} high={data.high} />
+        </p>
       </div>
     </div>
     {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
-    <div class="forecast-strip">
+    <div class="forecast-strip" class:daily={forecast === 'days'}>
       {#if forecast === 'hours'}{#each data.hourly.slice(0, 4) as hour}<div>
             <span>{hour.label}</span><strong>{hour.temperature}°</strong
             >{#if size === 'large' && data.alert}<small>{hour.condition}</small
               >{/if}
-          </div>{/each}{:else}{#each data.daily.slice(0, 4) as day, i}<div>
+          </div>{/each}{:else}{#each data.daily.slice(0, 5) as day, i}<div
+            class="forecast-day"
+          >
             <span
               >{i === 0
                 ? 'Today'
                 : new Date(day.date).toLocaleDateString('en-US', {
                     weekday: 'short',
                   })}</span
-            ><strong>{day.high}° <small>{day.low}°</small></strong
+            ><strong><TemperatureRange low={day.low} high={day.high} /></strong
             >{#if size === 'large' && data.alert}<small>{day.condition}</small
               >{/if}
           </div>{/each}{/if}
@@ -108,6 +113,9 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
   }
+  .forecast-strip.daily {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
   .forecast-strip > div {
     display: flex;
     flex-direction: column;
@@ -125,10 +133,6 @@
     font-weight: 400;
     line-height: 1.2;
     white-space: nowrap;
-  }
-  .forecast-strip strong small {
-    font-size: 18px;
-    margin-left: 4px;
   }
   .forecast-toggle {
     font-size: 12px;
@@ -186,14 +190,16 @@
     .forecast-strip strong {
       font-size: 22px;
     }
-    .forecast-strip strong small {
-      font-size: 16px;
-    }
     .has-alert .alert-copy {
       font-size: 14px;
     }
     .has-alert.weather-content {
       gap: 8px;
+    }
+  }
+  @container (max-width:600px) {
+    .daily strong {
+      font-size: 18px;
     }
   }
   @container (max-width:480px) {
@@ -219,15 +225,14 @@
     .forecast-strip {
       gap: 8px;
     }
+    .forecast-strip.daily {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
     .forecast-strip span {
       font-size: 13px;
     }
     .forecast-strip strong {
       font-size: 20px;
-    }
-    .forecast-strip strong small {
-      font-size: 14px;
-      margin-left: 2px;
     }
   }
   @container (max-height:180px) {
@@ -254,14 +259,20 @@
     .forecast-strip {
       gap: 4px;
     }
+    .forecast-strip.daily {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .forecast-strip span {
       font-size: 12px;
     }
     .forecast-strip strong {
       font-size: 18px;
     }
-    .forecast-strip strong small {
-      font-size: 12px;
+  }
+  @container (max-width:340px) and (max-height:320px) {
+    .forecast-strip,
+    .forecast-control {
+      display: none;
     }
   }
   @container (max-height:120px) {
@@ -287,9 +298,6 @@
     }
     .forecast-strip strong {
       font-size: 14px;
-    }
-    .forecast-strip strong small {
-      display: none;
     }
     .has-alert .weather-current {
       display: none;

@@ -18,7 +18,7 @@ import (
 const defaultBaseURL = "https://api.open-meteo.com/v1/forecast"
 
 const (
-	forecastDays  = 4
+	forecastDays  = 5
 	forecastHours = 5
 )
 

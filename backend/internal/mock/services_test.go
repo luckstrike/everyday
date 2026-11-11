@@ -17,7 +17,7 @@ func TestMockDatesStayStableWhilePolling(t *testing.T) {
 func TestDailyForecast(t *testing.T) {
 	anchor := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
 	state := Build(anchor, anchor)
-	if len(state.Weather.Daily) != 4 {
+	if len(state.Weather.Daily) != 5 {
 		t.Fatal("missing forecast")
 	}
 	for i, day := range state.Weather.Daily {

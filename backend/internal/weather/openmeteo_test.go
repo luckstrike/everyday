@@ -17,11 +17,11 @@ const forecastJSON = `{
     "weather_code": [0, 0, 0, 2, 3]
   },
   "daily": {
-    "time": ["2026-11-11", "2026-11-12", "2026-11-13", "2026-11-14"],
-    "weather_code": [2, 0, 3, 3],
-    "temperature_2m_max": [78.8, 76.2, 72.9, 64.2],
-    "temperature_2m_min": [59.5, 51.4, 48.7, 53.4],
-    "precipitation_probability_max": [1, 0, 0, 17]
+    "time": ["2026-11-11", "2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"],
+    "weather_code": [2, 0, 3, 3, 2],
+    "temperature_2m_max": [78.8, 76.2, 72.9, 64.2, 70.1],
+    "temperature_2m_min": [59.5, 51.4, 48.7, 53.4, 52.2],
+    "precipitation_probability_max": [1, 0, 0, 17, 10]
   }
 }`
 
@@ -57,7 +57,7 @@ func TestFetchNormalizesForecast(t *testing.T) {
 	if w.Alert != "" {
 		t.Fatalf("alert: %q", w.Alert)
 	}
-	if len(w.Daily) != 4 || len(w.Hourly) != 5 {
+	if len(w.Daily) != 5 || len(w.Hourly) != 5 {
 		t.Fatalf("got %d days and %d hours", len(w.Daily), len(w.Hourly))
 	}
 	wantDate := time.Date(2026, 11, 12, 0, 0, 0, 0, time.FixedZone("", -6*3600))
@@ -77,6 +77,9 @@ func TestFetchAsksForTheConfiguredLocationInFahrenheit(t *testing.T) {
 	q := req.URL.Query()
 	if q.Get("latitude") != "32.7767" || q.Get("longitude") != "-96.797" || q.Get("temperature_unit") != "fahrenheit" {
 		t.Fatalf("query: %v", q)
+	}
+	if q.Get("forecast_days") != "5" {
+		t.Fatalf("forecast_days: %q, want 5", q.Get("forecast_days"))
 	}
 }
 
