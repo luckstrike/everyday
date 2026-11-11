@@ -18,5 +18,5 @@ func calendarState(now time.Time) []domain.CalendarEvent {
 
 // anchor is fixed for the process lifetime, so polling does not move mock dates.
 func Build(anchor, now time.Time) domain.State {
-	return domain.State{GeneratedAt: now, Mock: true, Weather: weatherState(anchor), Finance: financeState(anchor), Calendar: calendarState(anchor)}
+	return domain.State{GeneratedAt: now, Sources: domain.Sources{Weather: domain.SourceMock, Finance: domain.SourceMock, Calendar: domain.SourceMock}, Weather: weatherState(anchor), Finance: financeState(anchor), Calendar: calendarState(anchor)}
 }

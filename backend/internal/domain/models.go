@@ -41,9 +41,30 @@ type CalendarEvent struct {
 	StartsAt time.Time `json:"startsAt"`
 	EndsAt   time.Time `json:"endsAt"`
 }
+
+// SourceStatus says where a section of State came from, so the UI can tell
+// real data from placeholder data and from nothing at all.
+type SourceStatus string
+
+const (
+	// SourceLive is data fetched from a real service.
+	SourceLive SourceStatus = "live"
+	// SourceMock is made-up development data.
+	SourceMock SourceStatus = "mock"
+	// SourceUnavailable means a source exists but has no usable data right now.
+	SourceUnavailable SourceStatus = "unavailable"
+	// SourceUnconfigured means nothing is hooked up for this section yet.
+	SourceUnconfigured SourceStatus = "unconfigured"
+)
+
+type Sources struct {
+	Weather  SourceStatus `json:"weather"`
+	Finance  SourceStatus `json:"finance"`
+	Calendar SourceStatus `json:"calendar"`
+}
 type State struct {
 	GeneratedAt time.Time       `json:"generatedAt"`
-	Mock        bool            `json:"mock"`
+	Sources     Sources         `json:"sources"`
 	Weather     Weather         `json:"weather"`
 	Finance     Finance         `json:"finance"`
 	Calendar    []CalendarEvent `json:"calendar"`

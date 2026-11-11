@@ -10,9 +10,15 @@ export interface Placement {
   w: number;
   h: number;
 }
+// Where a section's data came from; the backend sets one per section.
+export type SourceStatus = 'live' | 'mock' | 'unavailable' | 'unconfigured';
 export interface DashboardState {
   generatedAt: string;
-  mock: boolean;
+  sources: {
+    weather: SourceStatus;
+    finance: SourceStatus;
+    calendar: SourceStatus;
+  };
   weather: {
     location: string;
     temperature: number;

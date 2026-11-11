@@ -62,10 +62,9 @@
 <main>
   <header class="display-header">
     <div class="header-tools">
-      <span class="header-location"
-        ><Icon name="pin" size={16} />{dashboard?.weather.location ??
-          'Dallas, TX'}</span
-      ><DisplaySettings {theme} onchange={chooseTheme} />
+      {#if dashboard}<span class="header-location"
+          ><Icon name="pin" size={16} />{dashboard.weather.location}</span
+        >{/if}<DisplaySettings {theme} onchange={chooseTheme} />
     </div>
   </header>
   <div class="board-slot">
@@ -81,7 +80,7 @@
         ? `${error}${dashboard ? ' Showing last received data.' : ''}`
         : stale
           ? 'Data delayed · showing last received data'
-          : dashboard?.mock
+          : dashboard && Object.values(dashboard.sources).includes('mock')
             ? 'Mock data'
             : 'Local display'}</span
     >
