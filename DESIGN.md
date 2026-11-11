@@ -6,7 +6,22 @@ Use system sans, normal weights, and a light clock face. Evergreen background ok
 
 Clock digits use tabular numbers with light tracking (-0.025em), keeping minutes distinct while retaining a compact clock face.
 
-Every widget uses the shared `WidgetHeader` component: a muted, normal-weight heading at the top left, with an optional `actions` snippet aligned to the right. All widgets use the shared body padding so their headings have the same inset. Use normal reading and keyboard order for controls; insert a new control before existing ones to grow the row from right to left while keeping the rightmost control anchored. Titles truncate before controls are squeezed. The actions row is 20px tall like the heading; buttons retain their 44px minimum touch target, extending into the surrounding spacing without pushing the heading down. Headers stay at the top in loading, empty, and not-connected states; the remaining content area centers those states independently.
+Every widget uses `WidgetFrame`, which owns outer padding, responsive padding rules, the header-to-content gap, and the remaining content area. Individual widgets must not duplicate or override that frame spacing. The frame renders the shared `WidgetHeader`: a muted, normal-weight heading at the top left, with an optional `actions` snippet aligned to the right. Use normal reading and keyboard order for controls; insert a new control before existing ones to grow the row from right to left while keeping the rightmost control anchored. Titles truncate before controls are squeezed. The actions row is 20px tall like the heading; buttons retain their 44px minimum touch target, extending into the surrounding spacing without pushing the heading down. Headers stay at the top in loading, empty, and not-connected states; the remaining content area centers those states independently.
+
+To add a widget, supply a title, content through the default children snippet, and optionally header controls through the named actions snippet:
+
+```svelte
+<WidgetFrame title="Example">
+  {#snippet actions()}
+    <button onclick={refresh}>Refresh</button>
+    <button onclick={openMenu}>Options</button>
+  {/snippet}
+
+  <p>Widget content</p>
+</WidgetFrame>
+```
+
+Omit the actions snippet when there are no controls. Content is centered by default; a widget can give its own content wrapper `flex: 1` to fill the available space, as the event list does. Widget-specific spacing such as card padding and forecast gaps stays inside that content. The frame also exposes `--widget-content-height` for content sizing, so the clock does not repeat header or outer-padding calculations. `WidgetHeader` remains usable independently where a full widget frame is not needed.
 
 The clock shows a "Clock" heading above the time and the weekday and date.
 

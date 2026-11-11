@@ -16,7 +16,7 @@
     gap: 12px;
     flex-shrink: 0;
     min-width: 0;
-    min-height: 20px;
+    min-height: var(--widget-header-height, 20px);
   }
   h2 {
     flex: 1 1 0;
@@ -25,7 +25,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 16px;
-    line-height: 20px;
+    line-height: var(--widget-header-height, 20px);
     font-weight: 400;
     color: var(--muted);
   }
@@ -33,7 +33,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    height: 20px;
+    height: var(--widget-header-height, 20px);
     gap: 8px;
     flex-shrink: 0;
   }

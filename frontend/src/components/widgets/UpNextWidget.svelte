@@ -2,7 +2,7 @@
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import { when } from '../../lib/format.ts';
   import { sourceNotice } from '../../lib/sources.ts';
-  import WidgetHeader from '../WidgetHeader.svelte';
+  import WidgetFrame from '../WidgetFrame.svelte';
   let {
     data,
     status,
@@ -29,24 +29,22 @@
       : when(event, now);
 </script>
 
-<div class="widget-body calendar" class:large={size === 'large'}>
-  <WidgetHeader title="Up next" />
-  {#if notice}<div class="widget-content">
-      <p class="widget-title">{notice.title}</p>
-      <p class="quiet">{notice.detail}</p>
-    </div>
-  {:else if shown.length}<ol class="events">
+<WidgetFrame title="Up next">
+  {#if notice}
+    <p class="widget-title">{notice.title}</p>
+    <p class="quiet">{notice.detail}</p>
+  {:else if shown.length}<ol class="events" class:large={size === 'large'}>
       {#each shown as event, i}<li class="event">
           <p class="event-title" title={event.title}>{event.title}</p>
           <p class="event-when quiet" class:accent={i === 0}>
             {detail(event)}
           </p>
         </li>{/each}
-    </ol>{:else}<div class="widget-content">
-      <p class="widget-title">A little breathing room</p>
-      <p class="quiet">No upcoming events.</p>
-    </div>{/if}
-</div>
+    </ol>{:else}
+    <p class="widget-title">A little breathing room</p>
+    <p class="quiet">No upcoming events.</p>
+  {/if}
+</WidgetFrame>
 
 <style>
   .widget-title {
@@ -98,7 +96,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .large .events {
+  .events.large {
     gap: 10px;
   }
   .large .event {

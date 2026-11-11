@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import Icon from '../Icon.svelte';
-  import WidgetHeader from '../WidgetHeader.svelte';
+  import WidgetFrame from '../WidgetFrame.svelte';
   import { sourceNotice } from '../../lib/sources.ts';
   let {
     data,
@@ -16,23 +16,21 @@
   const notice = $derived(sourceNotice(status, 'Weather'));
 </script>
 
-<div class="widget-body weather" class:has-alert={!!data.alert}>
-  <WidgetHeader title="Weather">
-    {#snippet actions()}
-      {#if !notice}<div class="forecast-control">
-          <button
-            class="forecast-toggle"
-            aria-label={`Show ${forecast === 'days' ? 'hourly' : 'daily'} forecast`}
-            onclick={() => (forecast = forecast === 'days' ? 'hours' : 'days')}
-            >{forecast === 'days' ? 'Days' : 'Hours'}<Icon
-              name="down"
-              size={12}
-            /></button
-          >
-        </div>{/if}
-    {/snippet}
-  </WidgetHeader>
-  <div class="widget-content weather-content">
+<WidgetFrame title="Weather">
+  {#snippet actions()}
+    {#if !notice}<div class="forecast-control" class:has-alert={!!data.alert}>
+        <button
+          class="forecast-toggle"
+          aria-label={`Show ${forecast === 'days' ? 'hourly' : 'daily'} forecast`}
+          onclick={() => (forecast = forecast === 'days' ? 'hours' : 'days')}
+          >{forecast === 'days' ? 'Days' : 'Hours'}<Icon
+            name="down"
+            size={12}
+          /></button
+        >
+      </div>{/if}
+  {/snippet}
+  <div class="weather-content" class:has-alert={!!data.alert}>
     {#if notice}
       <p class="widget-title">{notice.title}</p>
       <p class="quiet">{notice.detail}</p>
@@ -67,13 +65,16 @@
       </div>
     {/if}
   </div>
-</div>
+</WidgetFrame>
 
 <style>
-  .widget-body.weather {
-    gap: 14px;
-  }
   .weather-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
     gap: 28px;
   }
   .weather-current {
@@ -151,14 +152,11 @@
   }
   @container (max-height: 320px) {
     .has-alert .forecast-strip,
-    .has-alert .forecast-control {
+    .has-alert.forecast-control {
       display: none;
     }
   }
   @container (max-height:230px) {
-    .widget-body.weather {
-      gap: 12px;
-    }
     .weather-content {
       gap: 16px;
     }
@@ -201,7 +199,7 @@
     .has-alert .alert-copy {
       font-size: 14px;
     }
-    .has-alert .weather-content {
+    .has-alert.weather-content {
       gap: 8px;
     }
   }
@@ -274,9 +272,6 @@
     }
   }
   @container (max-height:120px) {
-    .widget-body.weather {
-      gap: 8px;
-    }
     .weather-content {
       gap: 8px;
     }

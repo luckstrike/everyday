@@ -145,25 +145,6 @@ main {
   overflow: hidden;
   container-type: size;
 }
-.widget-body {
-  height: 100%;
-  padding: var(--pad);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 14px;
-  min-width: 0;
-  overflow: hidden;
-}
-.widget-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-  gap: 14px;
-}
 .eyebrow {
   font-size: 16px;
   font-weight: 400;
@@ -286,10 +267,6 @@ footer > span {
   }
 }
 @container (max-width: 340px) {
-  .widget-body {
-    padding: 16px;
-    gap: 10px;
-  }
   .widget-title,
   .bill-amount {
     font-size: 20px;
@@ -306,10 +283,6 @@ footer > span {
   }
 }
 @container (max-height: 150px) {
-  .widget-body {
-    gap: 8px;
-    padding: 16px 20px;
-  }
   .eyebrow {
     font-size: 14px;
   }
@@ -322,10 +295,6 @@ footer > span {
   }
 }
 @container (max-height: 100px) {
-  .widget-body {
-    padding: 10px 16px;
-    gap: 4px;
-  }
   .widget-title,
   .bill-amount {
     font-size: 18px;
