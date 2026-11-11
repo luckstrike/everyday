@@ -13,5 +13,5 @@ check:
 	cd backend && $(GO) vet ./...
 	cd frontend && npm run check && npm test
 build:
-	cd backend && $(GO) build -o /tmp/apartment-display-server ./cmd/server
+	cd backend && $(GO) build -o /tmp/everyday-server ./cmd/server
 	cd frontend && npm run build

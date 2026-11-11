@@ -1,7 +1,7 @@
 package main
 
 import (
-	"apartment-display/backend/internal/api"
+	"everyday/backend/internal/api"
 	"context"
 	"errors"
 	"log"

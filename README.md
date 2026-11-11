@@ -1,4 +1,4 @@
-# Apartment display
+# Everyday
 
 A personal wall dashboard built with Svelte 5, TypeScript, Vite, and a small Go REST service. The ambient evergreen UI follows the approved Paper landscape prototype. All information except the browser's local clock is **mock data**.
 
@@ -27,7 +27,7 @@ The MVP is a landscape-only display with one fixed layout and five widgets:
 | Up next | Your next calendar event |
 | Bills | The next bill, with a due date and autopay status |
 
-Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Use the settings icon beside **Dallas, TX** to choose **Evergreen** or **Turquoise**. The choice applies immediately and persists in this browser (`apartment-display.theme.v1`). Notices use a shared toast that dismisses after 4.5 seconds.
+Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Use the settings icon beside **Dallas, TX** to choose **Evergreen** or **Turquoise**. The choice applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
 
 ## Architecture
 

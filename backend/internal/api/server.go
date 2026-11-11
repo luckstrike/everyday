@@ -1,8 +1,8 @@
 package api
 
 import (
-	"apartment-display/backend/internal/domain"
-	"apartment-display/backend/internal/mock"
+	"everyday/backend/internal/domain"
+	"everyday/backend/internal/mock"
 	"encoding/json"
 	"net/http"
 	"time"

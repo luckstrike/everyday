@@ -58,7 +58,7 @@
   });
 </script>
 
-<svelte:head><title>Apartment</title></svelte:head>
+<svelte:head><title>Everyday</title></svelte:head>
 <main>
   <header class="display-header">
     <div class="header-tools">

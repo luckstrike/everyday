@@ -1,4 +1,4 @@
-# Apartment display
+# Everyday
 
 ## Register
 

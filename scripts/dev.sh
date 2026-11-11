@@ -11,7 +11,7 @@ if [ ! -d frontend/node_modules ]; then
   exit 1
 fi
 # Build first, then run the binary directly so Ctrl-C can stop the actual server.
-bin_dir=$(mktemp -d "${TMPDIR:-/tmp}/apartment-display.XXXXXX")
+bin_dir=$(mktemp -d "${TMPDIR:-/tmp}/everyday.XXXXXX")
 backend_pid=
 frontend_pid=
 cleanup() {

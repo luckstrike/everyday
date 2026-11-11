@@ -2,7 +2,7 @@
 package mock
 
 import (
-	"apartment-display/backend/internal/domain"
+	"everyday/backend/internal/domain"
 	"time"
 )
 

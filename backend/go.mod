@@ -1,3 +1,3 @@
-module apartment-display/backend
+module everyday/backend
 
 go 1.22
