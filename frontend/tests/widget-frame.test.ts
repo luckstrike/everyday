@@ -86,6 +86,7 @@ test('a message replaces content without rendering it or hiding header actions',
   assert.match(body, /<button>Retry<\/button>/);
   assert.match(body, /Weather unavailable/);
   assert.match(body, /Waiting for the latest data\./);
+  assert.match(body, /class="widget-content[^"\n]*\bhas-message\b/);
   assert.ok(body.indexOf('</header>') < body.indexOf('Weather unavailable'));
   assert.doesNotMatch(body, /Normal content/);
   assert.equal(contentRendered, false);
@@ -101,6 +102,7 @@ test('an explicit null message displays normal content', () => {
 
   assert.match(body, /Current conditions/);
   assert.doesNotMatch(body, /class="widget-title message-title/);
+  assert.doesNotMatch(body, /has-message/);
 });
 
 for (const widget of [
@@ -133,6 +135,7 @@ for (const widget of [
 
       assert.ok(body.includes(widget.emptyTitle));
       assert.ok(body.includes(widget.emptyDetail));
+      assert.match(body, /class="widget-content[^"\n]*\bhas-message\b/);
       assert.doesNotMatch(body, /Not connected|Waiting for the latest data/);
     }
   });
@@ -152,11 +155,48 @@ for (const widget of [
           : `${widget.sourceName} unavailable`;
 
       assert.ok(body.includes(expectedTitle));
+      assert.match(body, /class="widget-content[^"\n]*\bhas-message\b/);
       assert.ok(!body.includes(widget.emptyTitle));
       assert.ok(!body.includes(widget.emptyDetail));
     }
   });
 }
+
+test('Up next keeps all upcoming events available for measured fitting in date order', async () => {
+  const { default: UpNextWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/UpNextWidget.svelte',
+  );
+  const now = Date.UTC(2026, 10, 11, 12);
+  const hour = 60 * 60 * 1000;
+  const data = Array.from({ length: 6 }, (_, index) => ({
+    title: `Event ${index + 1}`,
+    location: '',
+    startsAt: new Date(now + index * hour).toISOString(),
+    endsAt: new Date(now + (index + 1) * hour).toISOString(),
+    allDay: false,
+  })).reverse();
+  data.push({
+    title: 'Already ended',
+    location: '',
+    startsAt: new Date(now - hour).toISOString(),
+    endsAt: new Date(now).toISOString(),
+    allDay: false,
+  });
+
+  for (const size of ['small', 'medium', 'large']) {
+    const { body } = render(UpNextWidget, {
+      props: { data, status: 'live', size, now },
+    });
+
+    assert.equal(body.match(/class="event[\s"]/g)?.length, 6);
+    assert.doesNotMatch(body, /Already ended|has-message/);
+    for (let index = 1; index < 6; index += 1) {
+      assert.ok(
+        body.indexOf(`Event ${index}`) < body.indexOf(`Event ${index + 1}`),
+      );
+    }
+  }
+});
 
 test('Weather replaces cached conditions with source notices and hides its toggle', async () => {
   const { default: WeatherWidget } = await server.ssrLoadModule(

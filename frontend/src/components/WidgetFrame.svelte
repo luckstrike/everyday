@@ -17,7 +17,7 @@
 
 <div class="widget-frame">
   <WidgetHeader {title} {actions} />
-  <div class="widget-content">
+  <div class="widget-content" class:has-message={!!message}>
     {#if message}
       <p class="widget-title message-title">{message.title}</p>
       <p class="quiet">{message.detail}</p>
@@ -53,6 +53,9 @@
     min-width: 0;
     min-height: 0;
     gap: 14px;
+  }
+  .widget-content.has-message {
+    justify-content: flex-start;
   }
   .message-title {
     display: -webkit-box;
