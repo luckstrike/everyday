@@ -51,3 +51,16 @@ test('fits forecast cards using content, padding, borders and horizontal gaps', 
   assert.equal(fittingItemCount(296, [92, 108, 80, 92], 8), 3);
   assert.equal(fittingItemCount(295, [92, 108, 80, 92], 8), 2);
 });
+
+test('a section fits only when every block above it fits as well', () => {
+  // Current conditions 72px tall, forecast cards 81px, 28px apart: 181px in all.
+  const blocks = [72, 81];
+  const fits = (room: number) =>
+    fittingItemCount(room, blocks, 28) === blocks.length;
+
+  assert.equal(fits(181), true);
+  assert.equal(fits(300), true);
+  assert.equal(fits(180.9), false);
+  // Without room even for the current conditions, the forecast cannot fit either.
+  assert.equal(fits(60), false);
+});

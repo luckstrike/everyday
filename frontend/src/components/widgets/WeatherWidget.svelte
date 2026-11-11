@@ -16,12 +16,18 @@
     size: Size;
   } = $props();
   let forecast = $state<'hours' | 'days'>('days');
-  let forecastStrip = $state<HTMLDivElement>();
+  let dailyStrip = $state<HTMLDivElement>();
+  let weatherArea = $state<HTMLDivElement>();
+  let currentBlock = $state<HTMLDivElement>();
+  let alertCopy = $state<HTMLParagraphElement>();
   let visibleDayCount = $state(0);
+  // Whether the forecast, and the switch that chooses between days and hours, fit
+  // whole beneath the current conditions. Measured, never guessed from a height.
+  let forecastFits = $state(true);
   const notice = $derived(sourceNotice(status, 'Weather'));
 
   $effect(() => {
-    const strip = forecastStrip;
+    const strip = dailyStrip;
     if (!strip || forecast !== 'days' || data.daily.length === 0) return;
     const days = Array.from(strip.children);
     const measure = () => {
@@ -51,11 +57,48 @@
 
     return () => observer.disconnect();
   });
+
+  // The daily cards always keep their natural height, so measuring them says what
+  // the forecast needs even while it is hidden. If everything above it plus the
+  // cards does not fit the space available, the forecast is hidden rather than
+  // squeezed, so a card is never shown clipped. The hourly strip is shorter than
+  // the daily one, so the daily height is the requirement for both.
+  $effect(() => {
+    const area = weatherArea;
+    const current = currentBlock;
+    const daily = dailyStrip;
+    if (!area || !current || !daily || data.daily.length === 0) return;
+    const measure = () => {
+      const gap = Number.parseFloat(getComputedStyle(area).rowGap) || 0;
+      const blocks = [current.getBoundingClientRect().height];
+      if (alertCopy) blocks.push(alertCopy.getBoundingClientRect().height);
+      blocks.push(daily.getBoundingClientRect().height);
+      // The widget's own padding absorbs a small shortfall: the cards keep their full
+      // size and sit a little nearer the edge, which looks better than squeezing
+      // them. Only half the padding is borrowed, so a margin always remains.
+      const padding = Number.parseFloat(
+        getComputedStyle(area.closest('.widget-frame') ?? area).paddingBottom,
+      );
+      const room = area.getBoundingClientRect().height + (padding || 0) / 2;
+      forecastFits = fittingItemCount(room, blocks, gap) === blocks.length;
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(area);
+    observer.observe(current);
+    observer.observe(daily);
+    if (alertCopy) observer.observe(alertCopy);
+    measure();
+
+    return () => observer.disconnect();
+  });
 </script>
 
 <WidgetFrame title="Weather" message={notice}>
   {#snippet actions()}
-    {#if !notice}<div class="forecast-control" class:has-alert={!!data.alert}>
+    {#if !notice && forecastFits}<div
+        class="forecast-control"
+        class:has-alert={!!data.alert}
+      >
         <button
           class="forecast-toggle"
           aria-label={`Show ${forecast === 'days' ? 'hourly' : 'daily'} forecast`}
@@ -67,8 +110,12 @@
         >
       </div>{/if}
   {/snippet}
-  <div class="weather-content" class:has-alert={!!data.alert}>
-    <div class="weather-current">
+  <div
+    class="weather-content"
+    class:has-alert={!!data.alert}
+    bind:this={weatherArea}
+  >
+    <div class="weather-current" bind:this={currentBlock}>
       <span class="weather-icon accent"
         ><Icon name={weatherIconName(data.icon)} size={56} /></span
       ><span class="temperature">{data.temperature}°</span>
@@ -79,45 +126,55 @@
         </p>
       </div>
     </div>
-    {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
+    {#if data.alert}<p class="alert-copy" bind:this={alertCopy}>
+        {data.alert}
+      </p>{/if}
+    <!-- Always rendered so its height can be measured; it leaves the layout, unseen,
+         when hours are showing or the forecast does not fit. -->
     <div
-      class="forecast-strip"
-      class:daily={forecast === 'days'}
-      bind:this={forecastStrip}
+      class="forecast-strip daily"
+      class:forecast-hidden={forecast !== 'days' || !forecastFits}
+      aria-hidden={forecast !== 'days' || !forecastFits}
+      inert={forecast !== 'days' || !forecastFits}
+      bind:this={dailyStrip}
     >
-      {#if forecast === 'hours'}{#each data.hourly.slice(0, 4) as hour}<div>
+      {#each data.daily.slice(0, 5) as day, i}<div
+          class="forecast-day"
+          class:overflow-day={i >= visibleDayCount}
+          style:visibility={i < visibleDayCount ? 'visible' : 'hidden'}
+          aria-hidden={i >= visibleDayCount}
+        >
+          <div class="forecast-day-content">
+            <div class="forecast-day-head">
+              <span class="forecast-day-label"
+                >{i === 0
+                  ? 'Today'
+                  : new Date(day.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                    })}</span
+              ><span class="forecast-day-icon" title={day.condition}
+                ><Icon name={weatherIconName(day.icon)} size={22} /></span
+              ><span class="sr-only">{day.condition}</span>
+            </div>
+            <strong><TemperatureRange low={day.low} high={day.high} /></strong
+            >{#if size === 'large' && data.alert}<small>{day.condition}</small
+              >{/if}
+          </div>
+        </div>{/each}
+    </div>
+    {#if forecast === 'hours' && forecastFits}<div class="forecast-strip">
+        {#each data.hourly.slice(0, 4) as hour}<div>
             <span>{hour.label}</span><strong>{hour.temperature}°</strong
             >{#if size === 'large' && data.alert}<small>{hour.condition}</small
               >{/if}
-          </div>{/each}{:else}{#each data.daily.slice(0, 5) as day, i}<div
-            class="forecast-day"
-            class:overflow-day={i >= visibleDayCount}
-            style:visibility={i < visibleDayCount ? 'visible' : 'hidden'}
-            aria-hidden={i >= visibleDayCount}
-          >
-            <div class="forecast-day-content">
-              <div class="forecast-day-head">
-                <span class="forecast-day-label"
-                  >{i === 0
-                    ? 'Today'
-                    : new Date(day.date).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                      })}</span
-                ><span class="forecast-day-icon" title={day.condition}
-                  ><Icon name={weatherIconName(day.icon)} size={22} /></span
-                ><span class="sr-only">{day.condition}</span>
-              </div>
-              <strong><TemperatureRange low={day.low} high={day.high} /></strong
-              >{#if size === 'large' && data.alert}<small>{day.condition}</small
-                >{/if}
-            </div>
-          </div>{/each}{/if}
-    </div>
+          </div>{/each}
+      </div>{/if}
   </div>
 </WidgetFrame>
 
 <style>
   .weather-content {
+    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -169,6 +226,18 @@
     position: relative;
     overflow: hidden;
     gap: 8px;
+    /* Keep the natural height, so the forecast is hidden to fit and never squeezed. */
+    flex-shrink: 0;
+  }
+  /* Out of the layout and unseen, but still laid out at full width so it can be
+     measured. */
+  .forecast-strip.forecast-hidden {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
   .forecast-day {
     flex: 1 0 auto;
@@ -301,10 +370,6 @@
   @container (max-height:230px) {
     .weather-content {
       gap: 16px;
-    }
-    .forecast-strip,
-    .forecast-control {
-      display: none;
     }
     .weather-current {
       gap: 16px;
