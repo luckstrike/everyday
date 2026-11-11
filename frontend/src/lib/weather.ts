@@ -4,7 +4,9 @@ import type { WeatherIcon } from './types.ts';
 // backend picks the kind from the weather code, so this only maps kind to picture.
 const iconNames: Record<WeatherIcon, string> = {
   clear: 'weather',
+  'clear-night': 'weather-clear-night',
   'partly-cloudy': 'weather-partly-cloudy',
+  'partly-cloudy-night': 'weather-partly-cloudy-night',
   cloudy: 'weather-cloudy',
   fog: 'weather-fog',
   rain: 'weather-rain',

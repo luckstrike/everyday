@@ -5,7 +5,9 @@ import { iconPaths } from '../src/lib/icon-paths.ts';
 
 const kinds = [
   'clear',
+  'clear-night',
   'partly-cloudy',
+  'partly-cloudy-night',
   'cloudy',
   'fog',
   'rain',

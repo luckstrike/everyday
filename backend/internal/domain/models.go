@@ -13,13 +13,15 @@ type Hour struct {
 type WeatherIcon string
 
 const (
-	IconClear       WeatherIcon = "clear"
-	IconPartlyCloud WeatherIcon = "partly-cloudy"
-	IconCloudy      WeatherIcon = "cloudy"
-	IconFog         WeatherIcon = "fog"
-	IconRain        WeatherIcon = "rain"
-	IconSnow        WeatherIcon = "snow"
-	IconStorm       WeatherIcon = "storm"
+	IconClear            WeatherIcon = "clear"
+	IconClearNight       WeatherIcon = "clear-night"
+	IconPartlyCloud      WeatherIcon = "partly-cloudy"
+	IconPartlyCloudNight WeatherIcon = "partly-cloudy-night"
+	IconCloudy           WeatherIcon = "cloudy"
+	IconFog              WeatherIcon = "fog"
+	IconRain             WeatherIcon = "rain"
+	IconSnow             WeatherIcon = "snow"
+	IconStorm            WeatherIcon = "storm"
 )
 
 type ForecastDay struct {

@@ -1,8 +1,17 @@
 export type WidgetId = 'clock' | 'calendar' | 'weather' | 'upnext' | 'finance';
 export type Size = 'small' | 'medium' | 'large';
 // A kind of weather to draw; the backend picks it from the weather code.
+// The two night kinds are only used for the current conditions; a forecast day is a daytime picture.
 export type WeatherIcon =
-  'clear' | 'partly-cloudy' | 'cloudy' | 'fog' | 'rain' | 'snow' | 'storm';
+  | 'clear'
+  | 'clear-night'
+  | 'partly-cloudy'
+  | 'partly-cloudy-night'
+  | 'cloudy'
+  | 'fog'
+  | 'rain'
+  | 'snow'
+  | 'storm';
 export interface Config {
   pollIntervalMs: number;
 }

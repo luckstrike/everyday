@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 // A trimmed real Open-Meteo response for Dallas (utc_offset_seconds is -6h).
 const forecastJSON = `{
   "utc_offset_seconds": -21600,
-  "current": {"temperature_2m": 69.4, "weather_code": 0},
+  "current": {"temperature_2m": 69.4, "weather_code": 0, "is_day": 1},
   "hourly": {
     "temperature_2m": [69.4, 73.2, 75.7, 77.4, 78.5],
     "weather_code": [0, 0, 0, 2, 3]
@@ -82,6 +83,53 @@ func TestFetchNormalizesForecast(t *testing.T) {
 	want := []domain.WeatherIcon{domain.IconPartlyCloud, domain.IconClear, domain.IconCloudy, domain.IconCloudy, domain.IconPartlyCloud}
 	if fmt.Sprint(icons) != fmt.Sprint(want) {
 		t.Fatalf("daily icons %v, want %v", icons, want)
+	}
+}
+
+func TestCurrentConditionsUseAMoonAtNight(t *testing.T) {
+	day, night := 1, 0
+	cases := []struct {
+		name  string
+		code  int
+		isDay *int
+		want  domain.WeatherIcon
+	}{
+		{"clear by day", 0, &day, domain.IconClear},
+		{"clear at night", 0, &night, domain.IconClearNight},
+		{"mostly clear at night", 1, &night, domain.IconClearNight},
+		{"partly cloudy by day", 2, &day, domain.IconPartlyCloud},
+		{"partly cloudy at night", 2, &night, domain.IconPartlyCloudNight},
+		// Weather that hides the sky looks the same day and night.
+		{"rain at night", 61, &night, domain.IconRain},
+		{"overcast at night", 3, &night, domain.IconCloudy},
+		{"storm at night", 95, &night, domain.IconStorm},
+		// A response without the flag is treated as daytime, never as night.
+		{"clear, day unknown", 0, nil, domain.IconClear},
+	}
+	for _, c := range cases {
+		if got := currentIcon(c.code, c.isDay); got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+func TestFetchAtNightDrawsTheMoonOnlyForTheCurrentConditions(t *testing.T) {
+	night := strings.Replace(forecastJSON, `"is_day": 1`, `"is_day": 0`, 1)
+	client, req := serve(t, 200, night)
+	w, err := client.Fetch(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Icon != domain.IconClearNight {
+		t.Fatalf("current icon %q, want %q", w.Icon, domain.IconClearNight)
+	}
+	for i, day := range w.Daily {
+		if day.Icon == domain.IconClearNight || day.Icon == domain.IconPartlyCloudNight {
+			t.Fatalf("forecast day %d shows a night icon %q", i, day.Icon)
+		}
+	}
+	if !strings.Contains(req.URL.Query().Get("current"), "is_day") {
+		t.Fatalf("the request must ask for is_day: %v", req.URL.Query())
 	}
 }
 

@@ -6,6 +6,9 @@ export const iconPaths: Record<string, string> = {
   // Weather: "weather" is the clear-sky sun, which the current-conditions icon also uses.
   weather:
     'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5 M17 12a5 5 0 1 1-10 0 5 5 0 0 1 10 0',
+  'weather-clear-night': 'M20 14.5A8.5 8.5 0 1 1 9.5 4 6.6 6.6 0 0 0 20 14.5Z',
+  'weather-partly-cloudy-night':
+    'M10.2 9.4A4.4 4.4 0 1 1 6 3.3 3.5 3.5 0 0 0 10.2 9.4Z M10 20h7.6a3.2 3.2 0 0 0 .4-6.38A4.6 4.6 0 0 0 9.4 13.2 3.4 3.4 0 0 0 10 20Z',
   'weather-partly-cloudy':
     'M11.2 8a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0 M8 3.4V2.2M4.75 4.75l-.85-.85M3.4 8H2.2M11.25 4.75l.85-.85M4.75 11.25l-.85.85 M10 20h7.6a3.2 3.2 0 0 0 .4-6.38A4.6 4.6 0 0 0 9.4 13.2 3.4 3.4 0 0 0 10 20Z',
   'weather-cloudy':

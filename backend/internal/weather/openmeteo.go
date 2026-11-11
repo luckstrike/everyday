@@ -42,6 +42,8 @@ type response struct {
 	Current          struct {
 		Temperature float64 `json:"temperature_2m"`
 		Code        int     `json:"weather_code"`
+		// IsDay is 1 in daylight and 0 at night; a pointer, so a response that omits it reads as daytime.
+		IsDay *int `json:"is_day"`
 	} `json:"current"`
 	Hourly struct {
 		Temperature []float64 `json:"temperature_2m"`
@@ -69,7 +71,7 @@ func (c *Client) Fetch(ctx context.Context) (domain.Weather, error) {
 	query := url.Values{
 		"latitude":         {strconv.FormatFloat(c.Location.Latitude, 'f', -1, 64)},
 		"longitude":        {strconv.FormatFloat(c.Location.Longitude, 'f', -1, 64)},
-		"current":          {"temperature_2m,weather_code"},
+		"current":          {"temperature_2m,weather_code,is_day"},
 		"hourly":           {"temperature_2m,weather_code"},
 		"daily":            {"weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"},
 		"temperature_unit": {"fahrenheit"},
@@ -135,7 +137,7 @@ func normalize(r response, location string) (domain.Weather, error) {
 		Location:      location,
 		Temperature:   round(r.Current.Temperature),
 		Condition:     condition(r.Current.Code),
-		Icon:          icon(r.Current.Code),
+		Icon:          currentIcon(r.Current.Code, r.Current.IsDay),
 		High:          daily[0].High,
 		Low:           daily[0].Low,
 		Precipitation: daily[0].Precipitation,
@@ -182,6 +184,23 @@ func icon(code int) domain.WeatherIcon {
 		return domain.IconStorm
 	}
 	return domain.IconCloudy
+}
+
+// currentIcon is the picture for the conditions right now. Those also depend on
+// whether the sun is up: a clear or partly cloudy sky is drawn with a moon at
+// night. Forecast days stay daytime pictures, since a day is not a moment.
+func currentIcon(code int, isDay *int) domain.WeatherIcon {
+	kind := icon(code)
+	if isDay == nil || *isDay != 0 {
+		return kind
+	}
+	switch kind {
+	case domain.IconClear:
+		return domain.IconClearNight
+	case domain.IconPartlyCloud:
+		return domain.IconPartlyCloudNight
+	}
+	return kind
 }
 
 // condition names a WMO weather code, the scheme Open-Meteo reports.
