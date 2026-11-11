@@ -26,3 +26,12 @@ func TestDailyForecast(t *testing.T) {
 		}
 	}
 }
+
+func TestEveryMockForecastDayHasAnIcon(t *testing.T) {
+	anchor := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
+	for i, day := range Build(anchor, anchor).Weather.Daily {
+		if day.Icon == "" {
+			t.Fatalf("mock day %d (%s) has no icon", i, day.Condition)
+		}
+	}
+}

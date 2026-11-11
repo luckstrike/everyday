@@ -2,10 +2,13 @@ package weather
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"everyday/backend/internal/domain"
 )
 
 // A trimmed real Open-Meteo response for Dallas (utc_offset_seconds is -6h).
@@ -66,6 +69,44 @@ func TestFetchNormalizesForecast(t *testing.T) {
 	}
 	if w.Hourly[0].Label != "Now" || w.Hourly[2].Label != "+2h" || w.Hourly[3].Condition != "Partly cloudy" {
 		t.Fatalf("hourly: %+v", w.Hourly)
+	}
+	// The fixture's daily weather codes are 2, 0, 3, 3, 2.
+	var icons []domain.WeatherIcon
+	for _, day := range w.Daily {
+		icons = append(icons, day.Icon)
+	}
+	want := []domain.WeatherIcon{domain.IconPartlyCloud, domain.IconClear, domain.IconCloudy, domain.IconCloudy, domain.IconPartlyCloud}
+	if fmt.Sprint(icons) != fmt.Sprint(want) {
+		t.Fatalf("daily icons %v, want %v", icons, want)
+	}
+}
+
+func TestIconPicksAPictureForEveryWeatherCode(t *testing.T) {
+	cases := map[domain.WeatherIcon][]int{
+		domain.IconClear:       {0, 1},
+		domain.IconPartlyCloud: {2},
+		domain.IconCloudy:      {3},
+		domain.IconFog:         {45, 48},
+		domain.IconRain:        {51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82},
+		domain.IconSnow:        {71, 73, 75, 77, 85, 86},
+		domain.IconStorm:       {95, 96, 99},
+	}
+	for want, codes := range cases {
+		for _, code := range codes {
+			if got := icon(code); got != want {
+				t.Errorf("code %d: got %q, want %q", code, got, want)
+			}
+		}
+	}
+	// A code Open-Meteo adds later should still get a sensible picture.
+	if got := icon(1234); got != domain.IconCloudy {
+		t.Errorf("unknown code: got %q, want a plain cloud", got)
+	}
+	// Every code with a name in condition() also has an explicit icon, not the fallback by accident.
+	for code := 0; code <= 99; code++ {
+		if condition(code) != "Unknown" && code != 3 && icon(code) == domain.IconCloudy {
+			t.Errorf("code %d (%s) fell through to the cloud fallback", code, condition(code))
+		}
 	}
 }
 

@@ -7,12 +7,28 @@ type Hour struct {
 	Temperature int    `json:"temperature"`
 	Condition   string `json:"condition"`
 }
+
+// WeatherIcon names a kind of weather the frontend can draw. It is separate from the
+// display text, so the UI never has to read words like "Showers" or "Sunny".
+type WeatherIcon string
+
+const (
+	IconClear       WeatherIcon = "clear"
+	IconPartlyCloud WeatherIcon = "partly-cloudy"
+	IconCloudy      WeatherIcon = "cloudy"
+	IconFog         WeatherIcon = "fog"
+	IconRain        WeatherIcon = "rain"
+	IconSnow        WeatherIcon = "snow"
+	IconStorm       WeatherIcon = "storm"
+)
+
 type ForecastDay struct {
-	Date          time.Time `json:"date"`
-	High          int       `json:"high"`
-	Low           int       `json:"low"`
-	Condition     string    `json:"condition"`
-	Precipitation int       `json:"precipitation"`
+	Date          time.Time   `json:"date"`
+	High          int         `json:"high"`
+	Low           int         `json:"low"`
+	Condition     string      `json:"condition"`
+	Icon          WeatherIcon `json:"icon"`
+	Precipitation int         `json:"precipitation"`
 }
 type Weather struct {
 	Daily         []ForecastDay `json:"daily"`

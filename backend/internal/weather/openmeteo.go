@@ -119,6 +119,7 @@ func normalize(r response, location string) (domain.Weather, error) {
 			High:          round(d.High[i]),
 			Low:           round(d.Low[i]),
 			Condition:     condition(d.Code[i]),
+			Icon:          icon(d.Code[i]),
 			Precipitation: round(d.Precipitation[i]),
 		}
 	}
@@ -160,6 +161,26 @@ func tomorrow(daily []domain.ForecastDay) string {
 		trend = "Cooler."
 	}
 	return fmt.Sprintf("%s %s with a high of %d°.", trend, next.Condition, next.High)
+}
+
+// icon picks the picture for a WMO weather code. Like condition it reads the code,
+// not the wording, and anything unrecognised falls back to a plain cloud.
+func icon(code int) domain.WeatherIcon {
+	switch code {
+	case 0, 1:
+		return domain.IconClear
+	case 2:
+		return domain.IconPartlyCloud
+	case 45, 48:
+		return domain.IconFog
+	case 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82:
+		return domain.IconRain
+	case 71, 73, 75, 77, 85, 86:
+		return domain.IconSnow
+	case 95, 96, 99:
+		return domain.IconStorm
+	}
+	return domain.IconCloudy
 }
 
 // condition names a WMO weather code, the scheme Open-Meteo reports.
