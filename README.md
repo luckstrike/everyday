@@ -17,23 +17,40 @@ Use the browser's fullscreen command to fill the display. For a wall session, pr
 
 ## Configure
 
-The backend reads environment variables, for example `EVERYDAY_LOCATION="Austin, TX" EVERYDAY_LAT=30.2672 EVERYDAY_LON=-97.7431 make dev`.
+Settings come from three places; later ones win: built-in defaults, then the config file, then environment variables. The config file holds no secrets. It is `everyday/config.json` in your user config directory (on macOS, `~/Library/Application Support/everyday/config.json`) unless `EVERYDAY_CONFIG` names another path. Every field is optional, and a misspelled field is an error:
 
-| Variable | Meaning |
+```json
+{
+  "location": { "name": "Austin, TX", "latitude": 30.2672, "longitude": -97.7431 },
+  "google": {
+    "exclude": ["Birthdays"],
+    "calendars": ["primary", "family@example.com"]
+  }
+}
+```
+
+| File field | Meaning |
 | --- | --- |
-| `EVERYDAY_LOCATION`, `EVERYDAY_LAT`, `EVERYDAY_LON` | Weather location: a display name and coordinates. Set all three or none; the default is Dallas, TX. |
-| `EVERYDAY_GOOGLE_CALENDARS` | Comma-separated Google calendar IDs to show. Default `primary`, the account's main calendar. |
+| `location` | Weather location: a display name and coordinates, all three required. The default is Dallas, TX. |
+| `google.exclude` | Calendars to leave out, by name or ID, ignoring case. Use it to drop noisy ones such as Birthdays. |
+| `google.calendars` | Show only these calendar IDs. Normally leave this out; see [which calendars show](#which-calendars-show). |
+
+| Environment variable | Meaning |
+| --- | --- |
+| `EVERYDAY_CONFIG` | Path of the config file. A missing file here is an error. |
+| `EVERYDAY_LOCATION`, `EVERYDAY_LAT`, `EVERYDAY_LON` | Weather location, overriding the file. Set all three or none. |
+| `EVERYDAY_GOOGLE_CALENDARS` | Comma-separated calendar IDs, overriding the file's `google.calendars`. |
 | `EVERYDAY_GOOGLE_CREDENTIALS` | Path of the Google credentials file. Defaults to `everyday/google.json` in your user config directory. |
 | `EVERYDAY_MOCK` | `1` or `true` serves mock data for every widget instead of live sources. Off by default. |
 
-Invalid settings stop the server at startup with a message.
+Invalid settings stop the server at startup with a message naming the problem.
 
 ## Connect Google Calendar
 
 The backend reads your calendar through Google's API, and the browser never sees any credentials. Setup is a one-time job in Google's console plus one sign-in:
 
 1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and enable the **Google Calendar API**.
-2. Configure the OAuth consent screen (Google Auth Platform): user type **External**, any app name, your own email. Add the scope `https://www.googleapis.com/auth/calendar.events.readonly`.
+2. Configure the OAuth consent screen (Google Auth Platform): user type **External**, any app name, your own email. Add the scopes `https://www.googleapis.com/auth/calendar.events.readonly` (read events) and `https://www.googleapis.com/auth/calendar.calendarlist.readonly` (list which calendars you have). Neither can change anything.
 3. **Publish the app** (status "In production"). In "Testing" status Google expires the sign-in after 7 days. An unverified personal app is fine; at sign-in Google warns that it hasn't verified the app, so choose Advanced and continue.
 4. Create credentials: **OAuth client ID**, application type **Desktop app**. Google may show the client secret only once, so save the ID and secret in a JSON file outside this repository: `{"client_id": "...", "client_secret": "..."}`. Google's downloaded `client_secret_*.json` also works, if the client is a Desktop app (its JSON starts with `"installed"`; a Web application client starts with `"web"` and will not work).
 5. Sign in. A browser opens; approve read-only access to your events:
@@ -44,7 +61,15 @@ The backend reads your calendar through Google's API, and the browser never sees
 
 6. Restart `make dev`. The Up next widget now shows your events.
 
-Sign-in saves the client and a refresh token to `everyday/google.json` in your user config directory, readable only by you. Move that file to the Raspberry Pi to deploy there. To show other calendars, copy each **Calendar ID** from its Google Calendar settings into `EVERYDAY_GOOGLE_CALENDARS`. If Google ever revokes access, the server logs it and the widget says unavailable; run `make google-auth` again.
+Sign-in saves the client and a refresh token to `everyday/google.json` in your user config directory, readable only by you. Move that file to the Raspberry Pi to deploy there. If Google ever revokes access, the server logs it and the widget says unavailable. Sign in again with a plain `make google-auth`, with no arguments, which reuses the saved client.
+
+### Which calendars show
+
+By default the dashboard mirrors Google Calendar: it shows every calendar ticked in Google Calendar's sidebar, including shared calendars and subscribed ones such as your country's holidays. To change what appears, tick or untick a calendar in Google Calendar (or the Google Calendar app); the dashboard follows within about five minutes. The server logs the calendars it is showing whenever that set changes.
+
+- To drop a calendar that is ticked but unwanted, add its name or ID to `google.exclude` in the config file.
+- To pin an exact list that ignores what is ticked, set `google.calendars` (or `EVERYDAY_GOOGLE_CALENDARS`) to calendar IDs, found under each calendar's settings as **Calendar ID**.
+- If one calendar cannot be read, it is skipped with a warning in the log and the others still show. Listing calendars needs the second permission above; if you signed in before it existed, run `make google-auth` again.
 
 ## What it shows
 
@@ -101,7 +126,7 @@ make build   # Go binary in /tmp, frontend build in frontend/dist
 
 Format with `cd frontend && npm run format`.
 
-Tests cover that the fixed layout stays inside the grid without overlapping, month dates and the current-week row, that mock dates stay stable while polling, Open-Meteo parsing, that the weather and calendar caches keep the last good data through failures, the Google sign-in flow (PKCE, state checks, token refresh), and calendar event handling (all-day, cancelled, declined, merged calendars). The intended LCD still needs a physical legibility and long-running check.
+Tests cover that the fixed layout stays inside the grid without overlapping, month dates and the current-week row, that mock dates stay stable while polling, Open-Meteo parsing, that the weather and calendar caches keep the last good data through failures, the Google sign-in flow (PKCE, state checks, token refresh), and calendar event handling (all-day events lead their day, cancelled and declined events, merged calendars, mirroring and excluding calendars, one broken calendar being skipped), and the config file. The intended LCD still needs a physical legibility and long-running check.
 
 For a local production preview, run the backend, build the frontend, and run `npm run preview` in `frontend/` at http://127.0.0.1:4173.
 
