@@ -20,8 +20,9 @@ const (
 	defaultAuthURL  = "https://accounts.google.com/o/oauth2/v2/auth"
 	defaultTokenURL = "https://oauth2.googleapis.com/token"
 
-	// Scope is the narrowest one that can read events: view events, nothing else.
-	Scope = "https://www.googleapis.com/auth/calendar.events.readonly"
+	// Scope asks to read events and to list which calendars the user has: the two
+	// narrowest read-only permissions that cover the dashboard, and nothing that writes.
+	Scope = "https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/calendar.calendarlist.readonly"
 )
 
 // ErrInvalidGrant means Google no longer accepts the saved sign-in, for example

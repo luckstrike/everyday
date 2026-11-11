@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load(os.Getenv)
+	cfg, err := config.Load(os.Getenv, config.DefaultFile())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -78,8 +78,13 @@ func connectGoogleCalendar(ctx context.Context, cfg config.Config) *gcal.Service
 	service := gcal.NewService(&gcal.Client{
 		Tokens:      gcal.NewRefreshTokens(oauth, creds.RefreshToken),
 		CalendarIDs: cfg.GoogleCalendars,
+		Exclude:     cfg.GoogleExclude,
 	})
 	go service.Run(ctx)
-	log.Printf("Serving Google Calendar events from %d calendar(s)", len(cfg.GoogleCalendars))
+	if len(cfg.GoogleCalendars) > 0 {
+		log.Printf("Serving Google Calendar events from the %d calendar(s) in the settings", len(cfg.GoogleCalendars))
+	} else {
+		log.Printf("Serving Google Calendar events from the calendars ticked in Google Calendar")
+	}
 	return service
 }
