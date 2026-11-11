@@ -2,7 +2,7 @@
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import { when } from '../../lib/format.ts';
   import { sourceNotice } from '../../lib/sources.ts';
-  import { fittingRowCount } from '../../lib/fit.ts';
+  import { fittingItemCount } from '../../lib/fit.ts';
   import WidgetFrame from '../WidgetFrame.svelte';
   let {
     data,
@@ -41,7 +41,7 @@
     const rows = Array.from(list.children);
     const measure = () => {
       const gap = Number.parseFloat(getComputedStyle(list).rowGap) || 0;
-      visibleCount = fittingRowCount(
+      visibleCount = fittingItemCount(
         list.getBoundingClientRect().height,
         rows.map((row) => row.getBoundingClientRect().height),
         gap,

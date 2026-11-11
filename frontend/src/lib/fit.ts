@@ -1,15 +1,15 @@
-export function fittingRowCount(
-  availableHeight: number,
-  rowHeights: readonly number[],
+export function fittingItemCount(
+  availableSpace: number,
+  itemSizes: readonly number[],
   gap: number,
 ): number {
-  let usedHeight = 0;
+  let usedSpace = 0;
   let count = 0;
 
-  for (const height of rowHeights) {
-    const nextHeight = usedHeight + (count > 0 ? gap : 0) + height;
-    if (height <= 0 || nextHeight > availableHeight) break;
-    usedHeight = nextHeight;
+  for (const size of itemSizes) {
+    const nextSpace = usedSpace + (count > 0 ? gap : 0) + size;
+    if (size <= 0 || nextSpace > availableSpace) break;
+    usedSpace = nextSpace;
     count += 1;
   }
 

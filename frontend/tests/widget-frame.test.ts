@@ -281,12 +281,14 @@ test('Weather shows five days with low-to-high ranges, starting with today', asy
     props: { data, status: 'live', size: 'medium' },
   });
   const days = [
-    ...body.matchAll(/<div class="forecast-day[^\"]*">([\s\S]*?)<\/div>/g),
+    ...body.matchAll(/<div class="forecast-day[^\"]*"[^>]*>([\s\S]*?)<\/div>/g),
   ];
 
   assert.equal(days.length, 5);
   assert.match(days[0][1], /Today/);
   for (const [index, day] of days.entries()) {
+    assert.match(day[0], /aria-hidden="true"/);
+    assert.match(day[0], /visibility:\s*hidden/);
     assert.ok(day[1].includes(`${60 + index}°`));
     assert.ok(day[1].includes(`${80 + index}°`));
     assert.ok(

@@ -4,6 +4,7 @@
   import WidgetFrame from '../WidgetFrame.svelte';
   import TemperatureRange from '../TemperatureRange.svelte';
   import { sourceNotice } from '../../lib/sources.ts';
+  import { fittingItemCount } from '../../lib/fit.ts';
   let {
     data,
     status,
@@ -14,7 +15,41 @@
     size: Size;
   } = $props();
   let forecast = $state<'hours' | 'days'>('days');
+  let forecastStrip = $state<HTMLDivElement>();
+  let visibleDayCount = $state(0);
   const notice = $derived(sourceNotice(status, 'Weather'));
+
+  $effect(() => {
+    const strip = forecastStrip;
+    if (!strip || forecast !== 'days' || data.daily.length === 0) return;
+    const days = Array.from(strip.children);
+    const measure = () => {
+      const gap = Number.parseFloat(getComputedStyle(strip).columnGap) || 0;
+      visibleDayCount = fittingItemCount(
+        strip.getBoundingClientRect().width,
+        days.map((day) => {
+          const styles = getComputedStyle(day);
+          return (
+            day.firstElementChild!.getBoundingClientRect().width +
+            Number.parseFloat(styles.paddingLeft) +
+            Number.parseFloat(styles.paddingRight) +
+            Number.parseFloat(styles.borderLeftWidth) +
+            Number.parseFloat(styles.borderRightWidth)
+          );
+        }),
+        gap,
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(strip);
+    for (const day of days) {
+      observer.observe(day);
+      observer.observe(day.firstElementChild!);
+    }
+    measure();
+
+    return () => observer.disconnect();
+  });
 </script>
 
 <WidgetFrame title="Weather" message={notice}>
@@ -43,23 +78,33 @@
       </div>
     </div>
     {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
-    <div class="forecast-strip" class:daily={forecast === 'days'}>
+    <div
+      class="forecast-strip"
+      class:daily={forecast === 'days'}
+      bind:this={forecastStrip}
+    >
       {#if forecast === 'hours'}{#each data.hourly.slice(0, 4) as hour}<div>
             <span>{hour.label}</span><strong>{hour.temperature}°</strong
             >{#if size === 'large' && data.alert}<small>{hour.condition}</small
               >{/if}
           </div>{/each}{:else}{#each data.daily.slice(0, 5) as day, i}<div
             class="forecast-day"
+            class:overflow-day={i >= visibleDayCount}
+            style:visibility={i < visibleDayCount ? 'visible' : 'hidden'}
+            aria-hidden={i >= visibleDayCount}
           >
-            <span
-              >{i === 0
-                ? 'Today'
-                : new Date(day.date).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                  })}</span
-            ><strong><TemperatureRange low={day.low} high={day.high} /></strong
-            >{#if size === 'large' && data.alert}<small>{day.condition}</small
-              >{/if}
+            <div class="forecast-day-content">
+              <span
+                >{i === 0
+                  ? 'Today'
+                  : new Date(day.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                    })}</span
+              ><strong
+                ><TemperatureRange low={day.low} high={day.high} /></strong
+              >{#if size === 'large' && data.alert}<small>{day.condition}</small
+                >{/if}
+            </div>
           </div>{/each}{/if}
     </div>
   </div>
@@ -114,7 +159,29 @@
     gap: 12px;
   }
   .forecast-strip.daily {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    display: flex;
+    position: relative;
+    overflow: hidden;
+    gap: 8px;
+  }
+  .forecast-day {
+    flex: 1 0 auto;
+    min-width: 0;
+    padding: 12px clamp(4px, 1cqw, 8px);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .forecast-day:nth-child(odd) {
+    background: var(--surface);
+  }
+  .forecast-day.overflow-day {
+    position: absolute;
+  }
+  .forecast-day-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: max-content;
   }
   .forecast-strip > div {
     display: flex;
@@ -133,6 +200,9 @@
     font-weight: 400;
     line-height: 1.2;
     white-space: nowrap;
+  }
+  .forecast-strip.daily strong {
+    font-size: clamp(18px, 3cqw, 24px);
   }
   .forecast-toggle {
     font-size: 12px;
@@ -197,11 +267,6 @@
       gap: 8px;
     }
   }
-  @container (max-width:600px) {
-    .daily strong {
-      font-size: 18px;
-    }
-  }
   @container (max-width:480px) {
     .weather-content {
       gap: 16px;
@@ -224,9 +289,6 @@
     }
     .forecast-strip {
       gap: 8px;
-    }
-    .forecast-strip.daily {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .forecast-strip span {
       font-size: 13px;
@@ -260,19 +322,13 @@
       gap: 4px;
     }
     .forecast-strip.daily {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
     }
     .forecast-strip span {
       font-size: 12px;
     }
     .forecast-strip strong {
       font-size: 18px;
-    }
-  }
-  @container (max-width:340px) and (max-height:320px) {
-    .forecast-strip,
-    .forecast-control {
-      display: none;
     }
   }
   @container (max-height:120px) {
