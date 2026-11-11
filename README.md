@@ -1,6 +1,6 @@
 # Everyday
 
-A personal wall dashboard built with Svelte 5, TypeScript, Vite, and a small Go REST service. The ambient evergreen UI follows the approved Paper landscape prototype. Weather is **live** (Open-Meteo, no API key). Calendar reads from Google Calendar once you [connect it](#connect-google-calendar). Bills have no source yet, so that widget shows as not connected; set `EVERYDAY_MOCK=1` to fill the display with made-up data instead.
+A personal wall dashboard built with Svelte 5, TypeScript, Vite, and a small Go REST service. The ambient evergreen UI follows the approved Paper landscape prototype. Weather is **live** (Open-Meteo, no API key). Calendar reads from Google Calendar once you [connect it](#connect-google-calendar). Bills come from a small [bills file](#bills) you edit yourself. Set `EVERYDAY_MOCK=1` to fill the display with made-up data instead.
 
 ## Run on macOS
 
@@ -41,6 +41,7 @@ Settings come from three places; later ones win: built-in defaults, then the con
 | `EVERYDAY_LOCATION`, `EVERYDAY_LAT`, `EVERYDAY_LON` | Weather location, overriding the file. Set all three or none. |
 | `EVERYDAY_GOOGLE_CALENDARS` | Comma-separated calendar IDs, overriding the file's `google.calendars`. |
 | `EVERYDAY_GOOGLE_CREDENTIALS` | Path of the Google credentials file. Defaults to `everyday/google.json` in your user config directory. |
+| `EVERYDAY_BILLS` | Path of the bills file. Defaults to `everyday/bills.json` in your user config directory. |
 | `EVERYDAY_MOCK` | `1` or `true` serves mock data for every widget instead of live sources. Off by default. |
 
 Invalid settings stop the server at startup with a message naming the problem.
@@ -71,6 +72,24 @@ By default the dashboard mirrors Google Calendar: it shows every calendar ticked
 - To pin an exact list that ignores what is ticked, set `google.calendars` (or `EVERYDAY_GOOGLE_CALENDARS`) to calendar IDs, found under each calendar's settings as **Calendar ID**.
 - If one calendar cannot be read, it is skipped with a warning in the log and the others still show. Listing calendars needs the second permission above; if you signed in before it existed, run `make google-auth` again.
 
+## Bills
+
+Bills are typed in, not fetched: there is no bank or budgeting-app connection, and the display shows only what is due, never spending. They live in `everyday/bills.json` in your user config directory (on macOS, `~/Library/Application Support/everyday/bills.json`), or wherever `EVERYDAY_BILLS` points:
+
+```json
+{
+  "bills": [
+    { "name": "Rent", "amount": 1850, "day": 1 },
+    { "name": "Internet", "amount": 65, "day": 15, "autopay": true }
+  ]
+}
+```
+
+- Every bill repeats monthly, on `day` (1 to 31). Today's date counts as still due. A bill due on the 29th, 30th or 31st falls on the last day of a shorter month.
+- `amount` is the usual amount and `autopay` defaults to false. Both are shown on the card as written. A bill whose amount changes each month shows its usual figure.
+- The file is re-read whenever it changes, so edits appear within a few seconds with no restart. Leaving the file out shows "No bills yet". A mistake in it (a misspelled field, a day outside 1 to 31, a negative amount) shows "Bills unavailable" on the display and logs the exact problem once.
+- The widget shows as many whole cards as fit, soonest due first.
+
 ## What it shows
 
 The MVP is a landscape-only display with one fixed layout and five widgets:
@@ -81,7 +100,7 @@ The MVP is a landscape-only display with one fixed layout and five widgets:
 | Month calendar | The current month, or only the current week when the widget is short |
 | Weather | Current conditions with a five-day forecast (today plus four days), low → high temperature ranges, an hourly view via the **Days / Hours** button, and any alert |
 | Up next | Your next calendar event |
-| Bills | The next bill, with a due date and autopay status |
+| Bills | Your recurring bills as cards, soonest due first, each with its amount, due date, and autopay status |
 
 Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Use the settings icon beside **Dallas, TX** to choose **Evergreen** or **Turquoise**. The choice applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
 
@@ -98,6 +117,7 @@ Widgets receive props and never fetch APIs. Go owns the mock source data. The fr
 | --- | --- |
 | `backend/internal/domain` | Normalized data models |
 | `backend/internal/weather` | Open-Meteo client and the cache that keeps the last good forecast |
+| `backend/internal/bills` | The bills file, and when each bill is next due |
 | `backend/internal/gcal` | Google OAuth sign-in, the Calendar client, and the event cache |
 | `backend/cmd/googleauth` | The one-time `make google-auth` sign-in command |
 | `backend/internal/mock` | Independent mock sources, used only with `EVERYDAY_MOCK` |
@@ -126,7 +146,7 @@ make build   # Go binary in /tmp, frontend build in frontend/dist
 
 Format with `cd frontend && npm run format`.
 
-Tests cover that the fixed layout stays inside the grid without overlapping, month dates and the current-week row, that mock dates stay stable while polling, Open-Meteo parsing, that the weather and calendar caches keep the last good data through failures, the Google sign-in flow (PKCE, state checks, token refresh), and calendar event handling (all-day events lead their day, cancelled and declined events, merged calendars, mirroring and excluding calendars, one broken calendar being skipped), and the config file. The intended LCD still needs a physical legibility and long-running check.
+Tests cover that the fixed layout stays inside the grid without overlapping, month dates and the current-week row, that mock dates stay stable while polling, Open-Meteo parsing, the bills file and due-date arithmetic (month ends, leap years, year rollover), that the weather and calendar caches keep the last good data through failures, the Google sign-in flow (PKCE, state checks, token refresh), and calendar event handling (all-day events lead their day, cancelled and declined events, merged calendars, mirroring and excluding calendars, one broken calendar being skipped), and the config file. The intended LCD still needs a physical legibility and long-running check.
 
 For a local production preview, run the backend, build the frontend, and run `npm run preview` in `frontend/` at http://127.0.0.1:4173.
 
@@ -139,4 +159,4 @@ Removed from the prototype and preserved in the git tag `prototype-v0`:
 - Sports and Around Dallas widgets (V1+ or V2)
 - The priority and attention system
 
-Live bills data, iCloud calendars (Google only for now), and Raspberry Pi deployment also remain future work.
+An edit panel in the UI (for bills, calendars and location), iCloud calendars (Google only for now), and Raspberry Pi deployment also remain future work.
