@@ -1,11 +1,19 @@
 <script lang="ts">
-  import type { DashboardState, Size } from '../../lib/types.ts';
+  import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import { day, time } from '../../lib/format.ts';
+  import { sourceNotice } from '../../lib/sources.ts';
   let {
     data,
+    status,
     size,
     now,
-  }: { data: DashboardState['calendar']; size: Size; now: number } = $props();
+  }: {
+    data: DashboardState['calendar'];
+    status: SourceStatus;
+    size: Size;
+    now: number;
+  } = $props();
+  const notice = $derived(sourceNotice(status, 'Calendar'));
   const events = $derived(
     data
       .filter((e) => Date.parse(e.endsAt) > now)
@@ -15,7 +23,9 @@
 
 <div class="widget-body calendar">
   <p class="eyebrow">Up next</p>
-  {#if events[0]}<p class="widget-title" title={events[0].title}>
+  {#if notice}<p class="widget-title">{notice.title}</p>
+    <p class="quiet">{notice.detail}</p>
+  {:else if events[0]}<p class="widget-title" title={events[0].title}>
       {events[0].title}
     </p>
     <p class="quiet accent">

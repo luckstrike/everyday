@@ -16,10 +16,20 @@
 
 {#if id === 'clock'}<ClockWidget {now} />
 {:else if id === 'calendar'}<CalendarWidget {now} />
-{:else if id === 'weather'}<WeatherWidget data={dashboard.weather} {size} />
+{:else if id === 'weather'}<WeatherWidget
+    data={dashboard.weather}
+    status={dashboard.sources.weather}
+    {size}
+  />
 {:else if id === 'upnext'}<UpNextWidget
     data={dashboard.calendar}
+    status={dashboard.sources.calendar}
     {size}
     {now}
   />
-{:else}<FinanceWidget data={dashboard.finance} {size} {now} />{/if}
+{:else}<FinanceWidget
+    data={dashboard.finance}
+    status={dashboard.sources.finance}
+    {size}
+    {now}
+  />{/if}

@@ -1,11 +1,19 @@
 <script lang="ts">
-  import type { DashboardState, Size } from '../../lib/types.ts';
+  import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import { day, money } from '../../lib/format.ts';
+  import { sourceNotice } from '../../lib/sources.ts';
   let {
     data,
+    status,
     size,
     now,
-  }: { data: DashboardState['finance']; size: Size; now: number } = $props();
+  }: {
+    data: DashboardState['finance'];
+    status: SourceStatus;
+    size: Size;
+    now: number;
+  } = $props();
+  const notice = $derived(sourceNotice(status, 'Bills'));
   const bills = $derived(
     [...data.bills].sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt)),
   );
@@ -13,7 +21,9 @@
 
 <div class="widget-body finance">
   <p class="eyebrow">Next bill</p>
-  {#if bills[0]}<div class="bill-summary">
+  {#if notice}<p class="widget-title">{notice.title}</p>
+    <p class="quiet">{notice.detail}</p>
+  {:else if bills[0]}<div class="bill-summary">
       <p class="widget-title" title={bills[0].name}>{bills[0].name}</p>
       <p class="bill-amount">{money(bills[0].amount)}</p>
     </div>
