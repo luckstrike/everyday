@@ -25,3 +25,15 @@ export function day(value: string, now: number): string {
           day: 'numeric',
         });
 }
+// When an event happens, e.g. "Tomorrow · 6:00 PM" or "Today · All day". An all-day
+// event that is already under way (a multi-day trip) reads as today, not as its first day.
+export function when(
+  event: { startsAt: string; allDay?: boolean },
+  now: number,
+): string {
+  if (!event.allDay)
+    return `${day(event.startsAt, now)} · ${time(event.startsAt)}`;
+  const label =
+    Date.parse(event.startsAt) <= now ? 'Today' : day(event.startsAt, now);
+  return `${label} · All day`;
+}

@@ -82,6 +82,42 @@ func TestLiveModeWithoutAForecastIsUnavailableButStillValid(t *testing.T) {
 	}
 }
 
+type fakeCalendar struct {
+	events []domain.CalendarEvent
+	ok     bool
+}
+
+func (f fakeCalendar) Current(time.Time) ([]domain.CalendarEvent, bool) { return f.events, f.ok }
+
+func TestConnectedCalendarIsLiveAndShowsItsEvents(t *testing.T) {
+	events := []domain.CalendarEvent{{Title: "Dinner with Alex"}}
+	state, _ := getState(t, Options{Calendar: fakeCalendar{events, true}})
+	if state.Sources.Calendar != domain.SourceLive || len(state.Calendar) != 1 || state.Calendar[0].Title != "Dinner with Alex" {
+		t.Fatalf("sources %+v, events %+v", state.Sources, state.Calendar)
+	}
+	// Finance is still unconfigured: connecting a calendar changes nothing else.
+	if state.Sources.Finance != domain.SourceUnconfigured {
+		t.Fatalf("finance: %q", state.Sources.Finance)
+	}
+}
+
+func TestEmptyConnectedCalendarIsLiveAndEncodesAsAList(t *testing.T) {
+	state, body := getState(t, Options{Calendar: fakeCalendar{nil, true}})
+	if state.Sources.Calendar != domain.SourceLive {
+		t.Fatalf("calendar: %q", state.Sources.Calendar)
+	}
+	if !strings.Contains(body, `"calendar":[]`) {
+		t.Fatalf("a nil list would encode as null and crash the frontend: %s", body)
+	}
+}
+
+func TestConnectedCalendarThatHasNotDeliveredIsUnavailable(t *testing.T) {
+	state, _ := getState(t, Options{Calendar: fakeCalendar{}})
+	if state.Sources.Calendar != domain.SourceUnavailable || len(state.Calendar) != 0 {
+		t.Fatalf("sources %+v, events %+v", state.Sources, state.Calendar)
+	}
+}
+
 func TestRemovedEndpointsAreGone(t *testing.T) {
 	for _, path := range []string{"/api/widgets", "/api/scenario"} {
 		w := httptest.NewRecorder()

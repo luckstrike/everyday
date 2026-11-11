@@ -45,5 +45,6 @@ export interface DashboardState {
     location: string;
     startsAt: string;
     endsAt: string;
+    allDay: boolean;
   }[];
 }

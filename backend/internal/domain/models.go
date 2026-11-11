@@ -40,6 +40,8 @@ type CalendarEvent struct {
 	Location string    `json:"location"`
 	StartsAt time.Time `json:"startsAt"`
 	EndsAt   time.Time `json:"endsAt"`
+	// AllDay events cover whole local days; EndsAt is the midnight after the last day.
+	AllDay bool `json:"allDay"`
 }
 
 // SourceStatus says where a section of State came from, so the UI can tell

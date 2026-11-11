@@ -40,8 +40,26 @@ func TestCustomLocation(t *testing.T) {
 	}
 }
 
+func TestGoogleCalendarSettings(t *testing.T) {
+	cfg, err := Load(env(nil))
+	if err != nil || len(cfg.GoogleCalendars) != 1 || cfg.GoogleCalendars[0] != "primary" || cfg.GoogleCredentials != "" {
+		t.Fatalf("defaults: %+v, %v", cfg, err)
+	}
+	cfg, err = Load(env(map[string]string{
+		"EVERYDAY_GOOGLE_CALENDARS":   " primary, family@example.com ,,",
+		"EVERYDAY_GOOGLE_CREDENTIALS": "/tmp/google.json",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.GoogleCalendars) != 2 || cfg.GoogleCalendars[1] != "family@example.com" || cfg.GoogleCredentials != "/tmp/google.json" {
+		t.Fatalf("custom: %+v", cfg)
+	}
+}
+
 func TestRejectsBadSettings(t *testing.T) {
 	cases := map[string]map[string]string{
+		"no calendar ids":   {"EVERYDAY_GOOGLE_CALENDARS": " , "},
 		"bad mock":          {"EVERYDAY_MOCK": "maybe"},
 		"name only":         {"EVERYDAY_LOCATION": "Austin, TX"},
 		"coordinates only":  {"EVERYDAY_LAT": "30.27", "EVERYDAY_LON": "-97.74"},

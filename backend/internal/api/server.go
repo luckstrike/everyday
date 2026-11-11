@@ -14,6 +14,12 @@ type WeatherSource interface {
 	Current(now time.Time) (domain.Weather, bool)
 }
 
+// CalendarSource provides the latest live events, or false when it has none.
+// An empty list with true means the calendar really is empty.
+type CalendarSource interface {
+	Current(now time.Time) ([]domain.CalendarEvent, bool)
+}
+
 type Options struct {
 	// Mock serves made-up development data and ignores the other fields.
 	Mock bool
@@ -21,6 +27,8 @@ type Options struct {
 	// no forecast is available.
 	Weather  WeatherSource
 	Location string
+	// Calendar provides live events. Nil means no calendar is connected.
+	Calendar CalendarSource
 }
 
 type Server struct {
@@ -70,6 +78,16 @@ func (s *Server) build(now time.Time) domain.State {
 		if weather, ok := s.opts.Weather.Current(now); ok {
 			state.Weather = weather
 			state.Sources.Weather = domain.SourceLive
+		}
+	}
+	if s.opts.Calendar != nil {
+		// A connected calendar that has not delivered yet is unavailable, not unconfigured.
+		state.Sources.Calendar = domain.SourceUnavailable
+		if events, ok := s.opts.Calendar.Current(now); ok {
+			if events != nil {
+				state.Calendar = events
+			}
+			state.Sources.Calendar = domain.SourceLive
 		}
 	}
 	return state

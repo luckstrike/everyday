@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
-  import { day, time } from '../../lib/format.ts';
+  import { when } from '../../lib/format.ts';
   import { sourceNotice } from '../../lib/sources.ts';
   let {
     data,
@@ -29,12 +29,12 @@
       {events[0].title}
     </p>
     <p class="quiet accent">
-      {day(events[0].startsAt, now)} · {time(events[0].startsAt)}
+      {when(events[0], now)}
     </p>
     {#if size === 'large'}<p class="quiet">{events[0].location}</p>
       {#each events.slice(1, 3) as event}<div class="extra-event">
           <p>{event.title}</p>
-          <small>{day(event.startsAt, now)} · {time(event.startsAt)}</small>
+          <small>{when(event, now)}</small>
         </div>{/each}{/if}{:else}<p class="widget-title">
       A little breathing room
     </p>
