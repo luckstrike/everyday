@@ -1,6 +1,6 @@
 # Everyday
 
-A personal wall dashboard built with Svelte 5, TypeScript, Vite, and a small Go REST service. The ambient evergreen UI follows the approved Paper landscape prototype. Weather is **live** (Open-Meteo, no API key). Calendar and bills have no source yet, so those widgets show as empty; set `EVERYDAY_MOCK=1` to fill the display with made-up data instead.
+A personal wall dashboard built with Svelte 5, TypeScript, Vite, and a small Go REST service. The ambient evergreen UI follows the approved Paper landscape prototype. Weather is **live** (Open-Meteo, no API key). Calendar reads from Google Calendar once you [connect it](#connect-google-calendar). Bills have no source yet, so that widget shows as not connected; set `EVERYDAY_MOCK=1` to fill the display with made-up data instead.
 
 ## Run on macOS
 
@@ -22,9 +22,29 @@ The backend reads environment variables, for example `EVERYDAY_LOCATION="Austin,
 | Variable | Meaning |
 | --- | --- |
 | `EVERYDAY_LOCATION`, `EVERYDAY_LAT`, `EVERYDAY_LON` | Weather location: a display name and coordinates. Set all three or none; the default is Dallas, TX. |
+| `EVERYDAY_GOOGLE_CALENDARS` | Comma-separated Google calendar IDs to show. Default `primary`, the account's main calendar. |
+| `EVERYDAY_GOOGLE_CREDENTIALS` | Path of the Google credentials file. Defaults to `everyday/google.json` in your user config directory. |
 | `EVERYDAY_MOCK` | `1` or `true` serves mock data for every widget instead of live sources. Off by default. |
 
 Invalid settings stop the server at startup with a message.
+
+## Connect Google Calendar
+
+The backend reads your calendar through Google's API, and the browser never sees any credentials. Setup is a one-time job in Google's console plus one sign-in:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and enable the **Google Calendar API**.
+2. Configure the OAuth consent screen (Google Auth Platform): user type **External**, any app name, your own email. Add the scope `https://www.googleapis.com/auth/calendar.events.readonly`.
+3. **Publish the app** (status "In production"). In "Testing" status Google expires the sign-in after 7 days. An unverified personal app is fine; at sign-in Google warns that it hasn't verified the app, so choose Advanced and continue.
+4. Create credentials: **OAuth client ID**, application type **Desktop app**. Google may show the client secret only once, so save the ID and secret in a JSON file outside this repository: `{"client_id": "...", "client_secret": "..."}`. Google's downloaded `client_secret_*.json` also works, if the client is a Desktop app (its JSON starts with `"installed"`; a Web application client starts with `"web"` and will not work).
+5. Sign in. A browser opens; approve read-only access to your events:
+
+   ```sh
+   make google-auth ARGS="-client-file /path/to/client.json"
+   ```
+
+6. Restart `make dev`. The Up next widget now shows your events.
+
+Sign-in saves the client and a refresh token to `everyday/google.json` in your user config directory, readable only by you. Move that file to the Raspberry Pi to deploy there. To show other calendars, copy each **Calendar ID** from its Google Calendar settings into `EVERYDAY_GOOGLE_CALENDARS`. If Google ever revokes access, the server logs it and the widget says unavailable; run `make google-auth` again.
 
 ## What it shows
 
@@ -53,6 +73,8 @@ Widgets receive props and never fetch APIs. Go owns the mock source data. The fr
 | --- | --- |
 | `backend/internal/domain` | Normalized data models |
 | `backend/internal/weather` | Open-Meteo client and the cache that keeps the last good forecast |
+| `backend/internal/gcal` | Google OAuth sign-in, the Calendar client, and the event cache |
+| `backend/cmd/googleauth` | The one-time `make google-auth` sign-in command |
 | `backend/internal/mock` | Independent mock sources, used only with `EVERYDAY_MOCK` |
 | `backend/internal/config` | Environment settings |
 | `backend/internal/api` | REST handlers |
@@ -66,7 +88,7 @@ Widgets receive props and never fetch APIs. Go owns the mock source data. The fr
 | GET | `/api/state` | Normalized state, with a `sources` status (`live`, `mock`, `unavailable`, `unconfigured`) for each section |
 | GET | `/api/config` | Polling interval |
 
-Polling uses a five-second interval with an eight-second timeout and never overlaps requests. Timers clean up on unmount. The last successful state remains visible during outages; the footer reports delay or connection failure. The backend contacts Open-Meteo every 15 minutes (retrying after a minute on failure), not on each poll. A failed refresh keeps the last forecast, which is dropped after an hour so stale weather is never shown as current. In mock mode, dates are anchored to backend startup rather than advancing on each poll.
+Polling uses a five-second interval with an eight-second timeout and never overlaps requests. Timers clean up on unmount. The last successful state remains visible during outages; the footer reports delay or connection failure. The backend contacts Open-Meteo every 15 minutes (retrying after a minute on failure), not on each poll. A failed refresh keeps the last forecast, which is dropped after an hour so stale weather is never shown as current. Google Calendar is read every 5 minutes (retrying after a minute on failure), and its events are dropped after 30 minutes without a successful refresh. In mock mode, dates are anchored to backend startup rather than advancing on each poll.
 
 Svelte is the only frontend runtime dependency. Go uses its standard library. No layout libraries, network fonts, databases, or cloud services are used.
 
@@ -79,7 +101,7 @@ make build   # Go binary in /tmp, frontend build in frontend/dist
 
 Format with `cd frontend && npm run format`.
 
-Tests cover that the fixed layout stays inside the grid without overlapping, month dates and the current-week row, that mock dates stay stable while polling, Open-Meteo parsing, and that the weather cache keeps the last good forecast through failures. The intended LCD still needs a physical legibility and long-running check.
+Tests cover that the fixed layout stays inside the grid without overlapping, month dates and the current-week row, that mock dates stay stable while polling, Open-Meteo parsing, that the weather and calendar caches keep the last good data through failures, the Google sign-in flow (PKCE, state checks, token refresh), and calendar event handling (all-day, cancelled, declined, merged calendars). The intended LCD still needs a physical legibility and long-running check.
 
 For a local production preview, run the backend, build the frontend, and run `npm run preview` in `frontend/` at http://127.0.0.1:4173.
 
@@ -92,4 +114,4 @@ Removed from the prototype and preserved in the git tag `prototype-v0`:
 - Sports and Around Dallas widgets (V1+ or V2)
 - The priority and attention system
 
-Live calendar and bills data, empty states for widgets without a source, and Raspberry Pi deployment also remain future work.
+Live bills data, iCloud calendars (Google only for now), and Raspberry Pi deployment also remain future work.
