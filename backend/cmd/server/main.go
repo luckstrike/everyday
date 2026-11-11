@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"everyday/backend/internal/api"
+	"everyday/backend/internal/bills"
 	"everyday/backend/internal/config"
 	"everyday/backend/internal/gcal"
 	"everyday/backend/internal/weather"
@@ -36,6 +37,7 @@ func main() {
 		if calendar := connectGoogleCalendar(ctx, cfg); calendar != nil {
 			opts.Calendar = calendar
 		}
+		opts.Finance = billsSource(cfg)
 	}
 
 	server := &http.Server{Addr: "127.0.0.1:8080", Handler: api.New(opts), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
@@ -49,6 +51,17 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+}
+
+// billsSource serves the bills file. The file need not exist yet: until it does the
+// Bills widget says there are no bills, and it appears as soon as the file is created.
+func billsSource(cfg config.Config) *bills.Source {
+	path := cfg.BillsFile
+	if path == "" {
+		path = bills.DefaultFile()
+	}
+	log.Printf("Reading bills from %s", path)
+	return bills.NewSource(path)
 }
 
 // connectGoogleCalendar starts reading Google Calendar once the user has signed in

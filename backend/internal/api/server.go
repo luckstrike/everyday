@@ -20,6 +20,12 @@ type CalendarSource interface {
 	Current(now time.Time) ([]domain.CalendarEvent, bool)
 }
 
+// FinanceSource provides the bills due next and says how far to trust them: live,
+// unavailable (the source is broken), or unconfigured (there is none yet).
+type FinanceSource interface {
+	Bills(now time.Time) ([]domain.Bill, domain.SourceStatus)
+}
+
 type Options struct {
 	// Mock serves made-up development data and ignores the other fields.
 	Mock bool
@@ -29,6 +35,8 @@ type Options struct {
 	Location string
 	// Calendar provides live events. Nil means no calendar is connected.
 	Calendar CalendarSource
+	// Finance provides the bills. Nil means there is no bills source at all.
+	Finance FinanceSource
 }
 
 type Server struct {
@@ -89,6 +97,13 @@ func (s *Server) build(now time.Time) domain.State {
 			}
 			state.Sources.Calendar = domain.SourceLive
 		}
+	}
+	if s.opts.Finance != nil {
+		bills, status := s.opts.Finance.Bills(now)
+		if bills != nil {
+			state.Finance.Bills = bills
+		}
+		state.Sources.Finance = status
 	}
 	return state
 }

@@ -118,6 +118,33 @@ func TestConnectedCalendarThatHasNotDeliveredIsUnavailable(t *testing.T) {
 	}
 }
 
+type fakeFinance struct {
+	bills  []domain.Bill
+	status domain.SourceStatus
+}
+
+func (f fakeFinance) Bills(time.Time) ([]domain.Bill, domain.SourceStatus) { return f.bills, f.status }
+
+func TestBillsFromTheFinanceSourceAreServedWithTheirStatus(t *testing.T) {
+	bills := []domain.Bill{{Name: "Rent", Amount: 1850}}
+	state, _ := getState(t, Options{Finance: fakeFinance{bills, domain.SourceLive}})
+	if state.Sources.Finance != domain.SourceLive || len(state.Finance.Bills) != 1 || state.Finance.Bills[0].Name != "Rent" {
+		t.Fatalf("sources %+v, bills %+v", state.Sources, state.Finance.Bills)
+	}
+}
+
+func TestFinanceStatusesPassThroughAndKeepListsAsLists(t *testing.T) {
+	for _, status := range []domain.SourceStatus{domain.SourceUnconfigured, domain.SourceUnavailable} {
+		state, body := getState(t, Options{Finance: fakeFinance{nil, status}})
+		if state.Sources.Finance != status {
+			t.Fatalf("finance status %q, want %q", state.Sources.Finance, status)
+		}
+		if !strings.Contains(body, `"bills":[]`) {
+			t.Fatalf("a nil list would encode as null and crash the frontend: %s", body)
+		}
+	}
+}
+
 func TestRemovedEndpointsAreGone(t *testing.T) {
 	for _, path := range []string{"/api/widgets", "/api/scenario"} {
 		w := httptest.NewRecorder()

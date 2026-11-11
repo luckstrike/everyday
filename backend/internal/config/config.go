@@ -23,6 +23,8 @@ type Config struct {
 	Location weather.Location
 	// GoogleCredentials is the credentials file path; empty means the default location.
 	GoogleCredentials string
+	// BillsFile is the bills file path; empty means the default location.
+	BillsFile string
 	// GoogleCalendars, when set, are the only Google calendars shown. When empty the
 	// dashboard mirrors the calendars ticked in Google Calendar.
 	GoogleCalendars []string
@@ -67,6 +69,7 @@ func DefaultFile() string {
 //	EVERYDAY_LAT        latitude in degrees
 //	EVERYDAY_LON        longitude in degrees
 //	EVERYDAY_GOOGLE_CREDENTIALS  path of the Google credentials file
+//	EVERYDAY_BILLS      path of the bills file
 //	EVERYDAY_GOOGLE_CALENDARS    comma-separated Google calendar IDs; replaces mirroring
 //
 // The three location variables are set together or not at all; with no location
@@ -75,6 +78,7 @@ func Load(getenv func(string) string, defaultFile string) (Config, error) {
 	cfg := Config{
 		Location:          weather.Location{Name: "Dallas, TX", Latitude: 32.7767, Longitude: -96.797},
 		GoogleCredentials: getenv("EVERYDAY_GOOGLE_CREDENTIALS"),
+		BillsFile:         getenv("EVERYDAY_BILLS"),
 	}
 	if err := applyFile(&cfg, getenv("EVERYDAY_CONFIG"), defaultFile); err != nil {
 		return Config{}, err

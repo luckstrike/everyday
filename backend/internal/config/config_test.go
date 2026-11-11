@@ -73,6 +73,17 @@ func TestGoogleCalendarEnvironmentSettings(t *testing.T) {
 	}
 }
 
+func TestBillsFileComesFromTheEnvironment(t *testing.T) {
+	cfg, err := load(nil)
+	if err != nil || cfg.BillsFile != "" {
+		t.Fatalf("default: %+v, %v", cfg, err)
+	}
+	cfg, err = load(map[string]string{"EVERYDAY_BILLS": "/tmp/bills.json"})
+	if err != nil || cfg.BillsFile != "/tmp/bills.json" {
+		t.Fatalf("custom: %+v, %v", cfg, err)
+	}
+}
+
 func TestConfigFileSetsLocationAndCalendars(t *testing.T) {
 	path := writeConfig(t, `{
 	  "location": {"name": "Austin, TX", "latitude": 30.2672, "longitude": -97.7431},

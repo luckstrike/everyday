@@ -115,6 +115,7 @@ for (const widget of [
     component: 'FinanceWidget',
     sourceName: 'Bills',
     data: { bills: [] },
+    unconfiguredTitle: 'No bills yet',
     emptyTitle: 'All clear',
     emptyDetail: 'No upcoming bills.',
   },
@@ -123,6 +124,7 @@ for (const widget of [
     component: 'UpNextWidget',
     sourceName: 'Calendar',
     data: [],
+    unconfiguredTitle: 'Not connected',
     emptyTitle: 'A little breathing room',
     emptyDetail: 'No upcoming events.',
   },
@@ -140,7 +142,10 @@ for (const widget of [
       assert.ok(body.includes(widget.emptyTitle));
       assert.ok(body.includes(widget.emptyDetail));
       assert.match(body, /class="widget-content[^"\n]*\bhas-message\b/);
-      assert.doesNotMatch(body, /Not connected|Waiting for the latest data/);
+      assert.doesNotMatch(
+        body,
+        /Not connected|No bills yet|Waiting for the latest data|Check your bills file/,
+      );
     }
   });
 
@@ -155,7 +160,7 @@ for (const widget of [
       });
       const expectedTitle =
         status === 'unconfigured'
-          ? 'Not connected'
+          ? widget.unconfiguredTitle
           : `${widget.sourceName} unavailable`;
 
       assert.ok(body.includes(expectedTitle));
@@ -165,6 +170,50 @@ for (const widget of [
     }
   });
 }
+
+test('Bills lists each bill as a card in due-date order with its amount and how it is paid', async () => {
+  const { default: FinanceWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/FinanceWidget.svelte',
+  );
+  const now = new Date(2026, 10, 11, 12).getTime();
+  const due = (month: number, date: number) =>
+    new Date(2026, month - 1, date).toISOString();
+  // Deliberately out of order.
+  const data = {
+    bills: [
+      { name: 'Rent', amount: 1850, dueAt: due(12, 1), autopay: false },
+      { name: 'Phone', amount: 40, dueAt: due(11, 11), autopay: true },
+      { name: 'Electricity', amount: 84.5, dueAt: due(11, 15), autopay: true },
+      { name: 'Internet', amount: 65, dueAt: due(11, 20), autopay: true },
+    ],
+  };
+
+  for (const size of ['small', 'medium', 'large']) {
+    const { body } = render(FinanceWidget, {
+      props: { data, status: 'live', size, now },
+    });
+
+    // Every bill is rendered, so the measuring code can decide how many fit.
+    assert.equal(body.match(/class="bill[\s"]/g)?.length, 4);
+    assert.doesNotMatch(body, /has-message/);
+    const order = ['Phone', 'Electricity', 'Internet', 'Rent'].map((name) =>
+      body.indexOf(`>${name}<`),
+    );
+    assert.deepEqual(
+      order,
+      [...order].sort((a, b) => a - b),
+    );
+    assert.ok(order.every((position) => position >= 0));
+  }
+  const { body } = render(FinanceWidget, {
+    props: { data, status: 'live', size: 'medium', now },
+  });
+  assert.match(body, /Today/);
+  assert.match(body, /\$1,850/);
+  assert.match(body, /\$84\.50/);
+  assert.equal(body.match(/Autopay on/g)?.length, 3);
+  assert.equal(body.match(/Manual payment/g)?.length, 1);
+});
 
 test('Up next keeps all upcoming events available for measured fitting in date order', async () => {
   const { default: UpNextWidget } = await server.ssrLoadModule(
