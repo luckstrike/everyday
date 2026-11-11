@@ -18,3 +18,11 @@ export function monthGrid(year: number, month: number) {
     weeks,
   };
 }
+
+// The row of the month grid that contains the given day, for compact displays.
+export function weekContaining(
+  weeks: (number | null)[][],
+  day: number,
+): (number | null)[][] {
+  return weeks.filter((week) => week.includes(day));
+}

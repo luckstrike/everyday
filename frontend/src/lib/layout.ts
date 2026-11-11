@@ -5,21 +5,19 @@ import type { Placement, WidgetId } from './types.ts';
 export const GRID = 24;
 
 export const layout: Placement[] = [
-  { id: 'clock', x: 0, y: 0, w: 14, h: 12 },
-  { id: 'weather', x: 14, y: 0, w: 10, h: 12 },
-  { id: 'calendar', x: 0, y: 12, w: 7, h: 8 },
-  { id: 'finance', x: 7, y: 12, w: 7, h: 8 },
-  { id: 'discover', x: 14, y: 12, w: 10, h: 8 },
-  { id: 'sports', x: 0, y: 20, w: 24, h: 4 },
+  { id: 'clock', x: 0, y: 0, w: 10, h: 10 },
+  { id: 'weather', x: 10, y: 0, w: 14, h: 10 },
+  { id: 'calendar', x: 0, y: 10, w: 10, h: 14 },
+  { id: 'upnext', x: 10, y: 10, w: 7, h: 14 },
+  { id: 'finance', x: 17, y: 10, w: 7, h: 14 },
 ];
 
 export const widgetTitles: Record<WidgetId, string> = {
   clock: 'Clock',
+  calendar: 'Month calendar',
   weather: 'Weather',
-  calendar: 'Calendar',
+  upnext: 'Up next',
   finance: 'Bills',
-  discover: 'Around Dallas',
-  sports: 'Sports',
 };
 
 export function overlaps(a: Placement, b: Placement): boolean {

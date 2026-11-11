@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { monthGrid } from '../src/lib/month.ts';
+import { monthGrid, weekContaining } from '../src/lib/month.ts';
 
 test('month grid places dates under the correct weekdays and pads complete weeks', () => {
   const month = monthGrid(2026, 9);
@@ -24,5 +24,13 @@ test('month grid handles leap years, four-week months, six-week months and year 
     null,
     1,
     2,
+  ]);
+});
+test('the compact week is the single row containing the given day', () => {
+  const { weeks } = monthGrid(2026, 10);
+  assert.deepEqual(weekContaining(weeks, 11), [[8, 9, 10, 11, 12, 13, 14]]);
+  assert.deepEqual(weekContaining(weeks, 1), [[1, 2, 3, 4, 5, 6, 7]]);
+  assert.deepEqual(weekContaining(weeks, 30), [
+    [29, 30, null, null, null, null, null],
   ]);
 });

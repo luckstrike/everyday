@@ -63,7 +63,7 @@
   <header class="display-header">
     <div class="header-tools">
       <span class="header-location"
-        ><Icon name="discover" size={16} />{dashboard?.weather.location ??
+        ><Icon name="pin" size={16} />{dashboard?.weather.location ??
           'Dallas, TX'}</span
       ><DisplaySettings {theme} onchange={chooseTheme} />
     </div>

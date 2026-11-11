@@ -1,11 +1,13 @@
 <script lang="ts">
-  import Icon from './Icon.svelte';
-  import { monthGrid } from '../lib/month.ts';
-  let { now, onclose }: { now: number; onclose?: () => void } = $props();
+  import { monthGrid, weekContaining } from '../lib/month.ts';
+  let { now, week = false }: { now: number; week?: boolean } = $props();
   const year = $derived(new Date(now).getFullYear());
   const month = $derived(new Date(now).getMonth());
   const today = $derived(new Date(now).getDate());
   const calendar = $derived(monthGrid(year, month));
+  const rows = $derived(
+    week ? weekContaining(calendar.weeks, today) : calendar.weeks,
+  );
   const weekdays = [
     'Sunday',
     'Monday',
@@ -22,11 +24,6 @@
 <div class="month-calendar">
   <div class="month-heading">
     <h2>{calendar.label}</h2>
-    {#if onclose}<button
-        class="icon-button"
-        aria-label="Close month calendar"
-        onclick={onclose}><Icon name="close" size={18} /></button
-      >{/if}
   </div>
   <table aria-label={calendar.label}>
     <thead
@@ -37,8 +34,8 @@
       ></thead
     >
     <tbody
-      >{#each calendar.weeks as week}<tr
-          >{#each week as day}<td>
+      >{#each rows as row}<tr
+          >{#each row as day}<td>
               {#if day !== null}<time
                   datetime={dateString(day)}
                   aria-current={day === today ? 'date' : undefined}
@@ -60,10 +57,6 @@
   }
   h2 {
     font-size: 18px;
-  }
-  .month-heading button {
-    margin: -8px -8px -8px 0;
-    color: var(--muted);
   }
   table {
     width: 100%;

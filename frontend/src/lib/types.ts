@@ -1,5 +1,4 @@
-export type WidgetId =
-  'clock' | 'weather' | 'sports' | 'finance' | 'calendar' | 'discover';
+export type WidgetId = 'clock' | 'calendar' | 'weather' | 'upnext' | 'finance';
 export type Size = 'small' | 'medium' | 'large';
 export interface Config {
   pollIntervalMs: number;
@@ -32,18 +31,6 @@ export interface DashboardState {
     }[];
     alert: string;
   };
-  sports: {
-    league: string;
-    home: string;
-    homeCode: string;
-    away: string;
-    awayCode: string;
-    homeScore: number;
-    awayScore: number;
-    status: string;
-    detail: string;
-    startsAt: string;
-  };
   finance: {
     bills: { name: string; amount: number; dueAt: string; autopay: boolean }[];
   };
@@ -52,14 +39,5 @@ export interface DashboardState {
     location: string;
     startsAt: string;
     endsAt: string;
-  }[];
-  localEvents: {
-    id: string;
-    title: string;
-    venue: string;
-    startsAt: string;
-    category: string;
-    price: string;
-    reason: string;
   }[];
 }

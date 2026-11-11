@@ -9,9 +9,6 @@ import (
 func weatherState(now time.Time) domain.Weather {
 	return domain.Weather{Daily: []domain.ForecastDay{{Date: now, High: 78, Low: 62, Condition: "Sunny", Precipitation: 5}, {Date: now.AddDate(0, 0, 1), High: 76, Low: 61, Condition: "Partly cloudy", Precipitation: 15}, {Date: now.AddDate(0, 0, 2), High: 74, Low: 59, Condition: "Showers", Precipitation: 70}, {Date: now.AddDate(0, 0, 3), High: 73, Low: 60, Condition: "Sunny", Precipitation: 10}}, Location: "Dallas, TX", Temperature: 72, Condition: "Clear skies", High: 78, Low: 62, Precipitation: 10, Tomorrow: "A little warmer. Sunshine with a high of 74°.", Hourly: []domain.Hour{{Label: "Now", Temperature: 72, Condition: "Clear"}, {Label: "+1h", Temperature: 67, Condition: "Cloudy"}, {Label: "+2h", Temperature: 65, Condition: "Cloudy"}, {Label: "+3h", Temperature: 63, Condition: "Clear"}, {Label: "+4h", Temperature: 61, Condition: "Clear"}}, Alert: ""}
 }
-func sportsState(now time.Time) domain.Sports {
-	return domain.Sports{League: "NBA · Preseason", Home: "Mavericks", HomeCode: "DAL", Away: "Spurs", AwayCode: "SAS", Status: "scheduled", Detail: "American Airlines Center · Dallas", StartsAt: now.Add(48 * time.Hour)}
-}
 func financeState(now time.Time) domain.Finance {
 	return domain.Finance{Bills: []domain.Bill{{Name: "Electricity", Amount: 84.50, DueAt: now.Add(5 * 24 * time.Hour), Autopay: true}, {Name: "Internet", Amount: 65, DueAt: now.Add(4 * 24 * time.Hour), Autopay: true}, {Name: "Rent", Amount: 1850, DueAt: now.Add(20 * 24 * time.Hour), Autopay: false}}}
 }
@@ -21,14 +18,5 @@ func calendarState(now time.Time) []domain.CalendarEvent {
 
 // anchor is fixed for the process lifetime, so polling does not move mock dates.
 func Build(anchor, now time.Time) domain.State {
-	return domain.State{GeneratedAt: now, Mock: true, Weather: weatherState(anchor), LocalEvents: localEventsState(anchor), Sports: sportsState(anchor), Finance: financeState(anchor), Calendar: calendarState(anchor)}
-}
-
-// Illustrative recommendations only, not a real venue schedule or personalization model.
-func localEventsState(now time.Time) []domain.LocalEvent {
-	return []domain.LocalEvent{
-		{ID: "sample-jazz", Title: "Jazz in the garden", Venue: "Dallas Arboretum", StartsAt: now.AddDate(0, 0, 2), Category: "Live music", Price: "$25", Reason: "An easy outdoor evening, with room to come and go."},
-		{ID: "sample-market", Title: "Weekend makers market", Venue: "Bishop Arts District", StartsAt: now.AddDate(0, 0, 3), Category: "Food & local makers", Price: "Free entry · sample", Reason: "A relaxed afternoon exploring local food and handmade goods."},
-		{ID: "sample-art", Title: "After-hours gallery walk", Venue: "Deep Ellum", StartsAt: now.AddDate(0, 0, 5), Category: "Art & culture", Price: "$15 · sample", Reason: "A walkable evening of art, with dinner nearby."},
-	}
+	return domain.State{GeneratedAt: now, Mock: true, Weather: weatherState(anchor), Finance: financeState(anchor), Calendar: calendarState(anchor)}
 }

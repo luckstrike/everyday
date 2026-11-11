@@ -14,15 +14,6 @@ type ForecastDay struct {
 	Condition     string    `json:"condition"`
 	Precipitation int       `json:"precipitation"`
 }
-type LocalEvent struct {
-	ID       string    `json:"id"`
-	Title    string    `json:"title"`
-	Venue    string    `json:"venue"`
-	StartsAt time.Time `json:"startsAt"`
-	Category string    `json:"category"`
-	Price    string    `json:"price"`
-	Reason   string    `json:"reason"`
-}
 type Weather struct {
 	Daily         []ForecastDay `json:"daily"`
 	Location      string        `json:"location"`
@@ -34,18 +25,6 @@ type Weather struct {
 	Tomorrow      string        `json:"tomorrow"`
 	Hourly        []Hour        `json:"hourly"`
 	Alert         string        `json:"alert"`
-}
-type Sports struct {
-	League    string    `json:"league"`
-	Home      string    `json:"home"`
-	HomeCode  string    `json:"homeCode"`
-	Away      string    `json:"away"`
-	AwayCode  string    `json:"awayCode"`
-	HomeScore int       `json:"homeScore"`
-	AwayScore int       `json:"awayScore"`
-	Status    string    `json:"status"`
-	Detail    string    `json:"detail"`
-	StartsAt  time.Time `json:"startsAt"`
 }
 type Bill struct {
 	Name    string    `json:"name"`
@@ -63,11 +42,9 @@ type CalendarEvent struct {
 	EndsAt   time.Time `json:"endsAt"`
 }
 type State struct {
-	LocalEvents []LocalEvent    `json:"localEvents"`
 	GeneratedAt time.Time       `json:"generatedAt"`
 	Mock        bool            `json:"mock"`
 	Weather     Weather         `json:"weather"`
-	Sports      Sports          `json:"sports"`
 	Finance     Finance         `json:"finance"`
 	Calendar    []CalendarEvent `json:"calendar"`
 }
