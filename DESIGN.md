@@ -2,13 +2,15 @@
 
 Reference: Paper Ambient Landscape supplied by the owner. A wall display in a softly lit home should feel quiet, readable, and stable.
 
-Use system sans, normal weights, and a light clock face. Evergreen background oklch(24.30% .0194 167.17), raised surface oklch(29.53% .0268 163.93), sage accent oklch(82.38% .0619 130.22), primary text oklch(92.82% .0140 124.56), muted text oklch(74.91% .0230 149.61), outline oklch(39.45% .0284 156.49). The raised surface is for controls and floating elements only (hovered and selected buttons, the settings popover, the toast); widgets never use it. All widgets have a 1px outline and 18px radius. No decorative shadows except floating controls.
+Use system sans, normal weights, and a light clock face. Evergreen background oklch(24.30% .0194 167.17), raised surface oklch(29.53% .0268 163.93), sage accent oklch(82.38% .0619 130.22), primary text oklch(92.82% .0140 124.56), muted text oklch(74.91% .0230 149.61), outline oklch(39.45% .0284 156.49). The raised surface is for controls and floating elements (hovered and selected buttons, the settings popover, the toast) and for the alternating fill of the event cards inside Up next; a widget's own background never uses it. All widgets have a 1px outline and 18px radius. No decorative shadows except floating controls.
 
 Clock digits use tabular numbers with light tracking (-0.025em), keeping minutes distinct while retaining a compact clock face.
 
 The clock shows the time and the weekday and date only.
 
 The month calendar is its own widget, with Sunday-first weeks and today highlighted. When the widget is at least 280px tall it shows the whole month with room for a six-week month. Shorter widgets show only the current week. The month is read-only and updates with the local date; it is distinct from the Up next widget, which shows the next event.
+
+Up next lists up to three events under an "Up next" header, each as a card: the widget's 1px outline with a 12px radius, and every other card (the first, third) filled with the raised surface colour, so both themes follow their own palette. All-day events lead their day. The first card's time uses the accent colour. The list shows only whole cards, as many as the widget's height allows, so smaller displays show two or one. The empty and not-connected states keep their text vertically centered instead.
 
 The display is landscape only and uses one fixed layout on a 24 by 24 grid: Clock and Weather across the top, then Month calendar, Up next, and Bills below. Landscape uses 48px outer padding and 24px gaps. All widgets have a 1px outline and a background that matches the page. Widgets never change position, emphasis, or size at runtime, and nothing takes over the screen.
 

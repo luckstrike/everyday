@@ -231,16 +231,6 @@ main {
   color: var(--muted);
   margin-top: 8px;
 }
-.extra-event {
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
-  margin-top: 8px;
-}
-.extra-event small {
-  display: block;
-  margin-top: 8px;
-  color: var(--muted);
-}
 footer {
   display: flex;
   align-items: center;

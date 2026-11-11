@@ -19,25 +19,31 @@
       .filter((e) => Date.parse(e.endsAt) > now)
       .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)),
   );
+  // Up to three events are rendered; the stylesheet hides the ones that don't fit.
+  const shown = $derived(events.slice(0, 3));
+  // When it happens, plus where once there is room for the longer line.
+  const detail = (event: DashboardState['calendar'][number]) =>
+    size === 'large' && event.location
+      ? `${when(event, now)} · ${event.location}`
+      : when(event, now);
 </script>
 
-<div class="widget-body calendar">
+<div
+  class="widget-body calendar"
+  class:listing={!notice && shown.length > 0}
+  class:large={size === 'large'}
+>
   <p class="eyebrow">Up next</p>
   {#if notice}<p class="widget-title">{notice.title}</p>
     <p class="quiet">{notice.detail}</p>
-  {:else if events[0]}<p class="widget-title" title={events[0].title}>
-      {events[0].title}
-    </p>
-    <p class="quiet accent">
-      {when(events[0], now)}
-    </p>
-    {#if size === 'large'}<p class="quiet">{events[0].location}</p>
-      {#each events.slice(1, 3) as event}<div class="extra-event">
-          <p>{event.title}</p>
-          <small>{when(event, now)}</small>
-        </div>{/each}{/if}{:else}<p class="widget-title">
-      A little breathing room
-    </p>
+  {:else if shown.length}<ol class="events">
+      {#each shown as event, i}<li class="event">
+          <p class="event-title" title={event.title}>{event.title}</p>
+          <p class="event-when quiet" class:accent={i === 0}>
+            {detail(event)}
+          </p>
+        </li>{/each}
+    </ol>{:else}<p class="widget-title">A little breathing room</p>
     <p class="quiet">No upcoming events.</p>{/if}
 </div>
 
@@ -49,6 +55,88 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* A list reads from the top under its header. The empty and notice states
+     keep the shared vertical centering. */
+  .calendar.listing {
+    justify-content: flex-start;
+  }
+  /* The list is its own container, so how many cards fit depends only on the
+     height it is given, not on the widget's padding or text sizes. */
+  .events {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    container: events / size;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  /* Each event is a card: the widget's outline, one radius step smaller, with
+     every other card filled with the theme's raised surface colour. */
+  .event {
+    min-width: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .event:nth-child(odd) {
+    background: var(--surface);
+  }
+  .event-title {
+    font-size: 18px;
+    line-height: 1.25;
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Cards have a fixed height (about 60px, or 76px when large) so the thresholds
+     below can show only cards that fit whole, counting the gaps between them. */
+  .event .event-when {
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .large .events {
+    gap: 10px;
+  }
+  .large .event {
+    padding: 12px 14px;
+  }
+  .large .event-title {
+    font-size: 22px;
+  }
+  .large .event .event-when {
+    font-size: 16px;
+  }
+  /* Three cards need about 196px, two about 128px. */
+  @container events (max-height: 197px) {
+    .event:nth-child(n + 3) {
+      display: none;
+    }
+  }
+  @container events (max-height: 129px) {
+    .event:nth-child(n + 2) {
+      display: none;
+    }
+  }
+  /* Large cards: three need about 248px, two about 162px. */
+  @container events (max-height: 249px) {
+    .large .event:nth-child(n + 3) {
+      display: none;
+    }
+  }
+  @container events (max-height: 163px) {
+    .large .event:nth-child(n + 2) {
+      display: none;
+    }
+  }
+
   @container (max-height: 120px) {
     .calendar .eyebrow {
       display: none;
