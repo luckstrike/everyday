@@ -26,6 +26,7 @@ export interface DashboardState {
     location: string;
     temperature: number;
     condition: string;
+    icon: WeatherIcon;
     high: number;
     low: number;
     precipitation: number;

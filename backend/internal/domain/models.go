@@ -35,6 +35,7 @@ type Weather struct {
 	Location      string        `json:"location"`
 	Temperature   int           `json:"temperature"`
 	Condition     string        `json:"condition"`
+	Icon          WeatherIcon   `json:"icon"`
 	High          int           `json:"high"`
 	Low           int           `json:"low"`
 	Precipitation int           `json:"precipitation"`

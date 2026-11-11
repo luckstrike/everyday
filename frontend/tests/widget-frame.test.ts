@@ -300,6 +300,45 @@ test('Weather shows five days with low-to-high ranges, starting with today', asy
   assert.doesNotMatch(body, /65°|85°/);
 });
 
+test('Weather draws the icon for the current conditions, not the first forecast day', async () => {
+  const { default: WeatherWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/WeatherWidget.svelte',
+  );
+  const data = {
+    location: 'Dallas',
+    temperature: 41,
+    condition: 'Rain',
+    icon: 'rain',
+    high: 50,
+    low: 38,
+    precipitation: 80,
+    tomorrow: 'Clear',
+    hourly: [],
+    // Today's forecast is clear, so a card can differ from what is happening now.
+    daily: [
+      {
+        date: new Date(Date.UTC(2026, 10, 11, 12)).toISOString(),
+        high: 50,
+        low: 38,
+        condition: 'Clear skies',
+        icon: 'clear',
+        precipitation: 0,
+      },
+    ],
+    alert: '',
+  };
+  const { body } = render(WeatherWidget, {
+    props: { data, status: 'live', size: 'medium' },
+  });
+  const current = body.match(
+    /class="weather-icon[^"]*"[^>]*>([\s\S]*?)<\/span>/,
+  );
+
+  assert.ok(current, 'the current-conditions icon should render');
+  assert.ok(current[1].includes(iconPaths[weatherIconName('rain')]));
+  assert.ok(!current[1].includes(iconPaths[weatherIconName('clear')]));
+});
+
 test('each forecast day shows the icon for its own weather, with the condition for screen readers', async () => {
   const { default: WeatherWidget } = await server.ssrLoadModule(
     '/src/components/widgets/WeatherWidget.svelte',

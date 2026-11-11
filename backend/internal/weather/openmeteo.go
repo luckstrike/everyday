@@ -135,6 +135,7 @@ func normalize(r response, location string) (domain.Weather, error) {
 		Location:      location,
 		Temperature:   round(r.Current.Temperature),
 		Condition:     condition(r.Current.Code),
+		Icon:          icon(r.Current.Code),
 		High:          daily[0].High,
 		Low:           daily[0].Low,
 		Precipitation: daily[0].Precipitation,

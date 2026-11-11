@@ -70,6 +70,10 @@ func TestFetchNormalizesForecast(t *testing.T) {
 	if w.Hourly[0].Label != "Now" || w.Hourly[2].Label != "+2h" || w.Hourly[3].Condition != "Partly cloudy" {
 		t.Fatalf("hourly: %+v", w.Hourly)
 	}
+	// The fixture's current weather code is 0, clear sky.
+	if w.Icon != domain.IconClear {
+		t.Fatalf("current icon %q, want %q", w.Icon, domain.IconClear)
+	}
 	// The fixture's daily weather codes are 2, 0, 3, 3, 2.
 	var icons []domain.WeatherIcon
 	for _, day := range w.Daily {

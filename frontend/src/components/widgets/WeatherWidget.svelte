@@ -69,7 +69,8 @@
   {/snippet}
   <div class="weather-content" class:has-alert={!!data.alert}>
     <div class="weather-current">
-      <span class="weather-icon accent"><Icon name="weather" size={56} /></span
+      <span class="weather-icon accent"
+        ><Icon name={weatherIconName(data.icon)} size={56} /></span
       ><span class="temperature">{data.temperature}°</span>
       <div>
         <p class="widget-title">{data.condition}</p>
