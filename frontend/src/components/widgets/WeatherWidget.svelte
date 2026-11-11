@@ -5,6 +5,7 @@
   import TemperatureRange from '../TemperatureRange.svelte';
   import { sourceNotice } from '../../lib/sources.ts';
   import { fittingItemCount } from '../../lib/fit.ts';
+  import { weatherIconName } from '../../lib/weather.ts';
   let {
     data,
     status,
@@ -94,14 +95,18 @@
             aria-hidden={i >= visibleDayCount}
           >
             <div class="forecast-day-content">
-              <span
-                >{i === 0
-                  ? 'Today'
-                  : new Date(day.date).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                    })}</span
-              ><strong
-                ><TemperatureRange low={day.low} high={day.high} /></strong
+              <div class="forecast-day-head">
+                <span class="forecast-day-label"
+                  >{i === 0
+                    ? 'Today'
+                    : new Date(day.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                      })}</span
+                ><span class="forecast-day-icon" title={day.condition}
+                  ><Icon name={weatherIconName(day.icon)} size={22} /></span
+                ><span class="sr-only">{day.condition}</span>
+              </div>
+              <strong><TemperatureRange low={day.low} high={day.high} /></strong
               >{#if size === 'large' && data.alert}<small>{day.condition}</small
                 >{/if}
             </div>
@@ -167,6 +172,9 @@
   .forecast-day {
     flex: 1 0 auto;
     min-width: 0;
+    /* A card is wider than its text whenever the widget has room to spare. Centering
+       the text spreads that spare width evenly instead of leaving it on the right. */
+    align-items: center;
     padding: 12px clamp(4px, 1cqw, 8px);
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -201,8 +209,74 @@
     line-height: 1.2;
     white-space: nowrap;
   }
+  /* Day label on the left and the day's weather on the right, so the icon adds
+     no width to the card and the temperatures keep their full size. The icon is
+     taller than the label's line, so negative margins let it overhang into the
+     card's padding instead of making every card taller. */
+  .forecast-day-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .forecast-strip .forecast-day-icon {
+    display: flex;
+    margin-block: -3px;
+    color: var(--accent);
+  }
+  .forecast-day-icon :global(svg) {
+    display: block;
+  }
   .forecast-strip.daily strong {
     font-size: clamp(18px, 3cqw, 24px);
+  }
+  /* On a wide widget the cards are much wider than their text, which used to leave
+     an empty strip on the right of each one. There the icon leaves the corner and
+     sits large beside the day and temperatures, so the card's width is used. */
+  @container (min-width: 960px) {
+    .forecast-day-content {
+      display: grid;
+      grid-template-columns: auto auto;
+      grid-template-areas: 'icon label' 'icon range';
+      align-items: center;
+      justify-content: start;
+      column-gap: clamp(10px, 1.2cqw, 16px);
+      row-gap: 8px;
+    }
+    .forecast-day-head {
+      display: contents;
+    }
+    .forecast-day-label {
+      grid-area: label;
+    }
+    .forecast-strip .forecast-day-icon {
+      grid-area: icon;
+      margin-block: 0;
+    }
+    .forecast-day-icon :global(svg) {
+      width: clamp(32px, 3.2cqw, 48px);
+      height: clamp(32px, 3.2cqw, 48px);
+    }
+    .forecast-day-content > strong {
+      grid-area: range;
+    }
+    .forecast-day-content > small {
+      grid-column: 1 / -1;
+    }
+  }
+  /* Mid-width widgets, just short of the side-by-side layout, still have a little
+     spare width per card, so the temperatures grow to use it. */
+  @container (min-width: 780px) and (max-width: 959px) and (min-height: 280px) {
+    .forecast-strip.daily strong {
+      font-size: 26px;
+    }
+  }
+  /* Taller as well as wider: the temperatures can grow too without needing more
+     height than the widget has. */
+  @container (min-width: 960px) and (min-height: 300px) {
+    .forecast-strip.daily strong {
+      font-size: clamp(24px, 2.2cqw, 32px);
+    }
   }
   .forecast-toggle {
     font-size: 12px;
@@ -268,6 +342,13 @@
     }
   }
   @container (max-width:480px) {
+    .forecast-strip .forecast-day-icon {
+      margin-block: -1px;
+    }
+    .forecast-day-icon :global(svg) {
+      width: 18px;
+      height: 18px;
+    }
     .weather-content {
       gap: 16px;
     }
@@ -303,6 +384,9 @@
     }
   }
   @container (max-width:340px) {
+    .forecast-strip .forecast-day-icon {
+      display: none;
+    }
     .weather-content {
       gap: 12px;
     }
@@ -332,6 +416,9 @@
     }
   }
   @container (max-height:120px) {
+    .forecast-strip .forecast-day-icon {
+      display: none;
+    }
     .weather-content {
       gap: 8px;
     }

@@ -1,5 +1,8 @@
 export type WidgetId = 'clock' | 'calendar' | 'weather' | 'upnext' | 'finance';
 export type Size = 'small' | 'medium' | 'large';
+// A kind of weather to draw; the backend picks it from the weather code.
+export type WeatherIcon =
+  'clear' | 'partly-cloudy' | 'cloudy' | 'fog' | 'rain' | 'snow' | 'storm';
 export interface Config {
   pollIntervalMs: number;
 }
@@ -33,6 +36,7 @@ export interface DashboardState {
       high: number;
       low: number;
       condition: string;
+      icon: WeatherIcon;
       precipitation: number;
     }[];
     alert: string;

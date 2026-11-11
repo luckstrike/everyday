@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type { Component, Snippet } from 'svelte';
 import { createServer, type ViteDevServer } from 'vite';
+import { iconPaths } from '../src/lib/icon-paths.ts';
+import { weatherIconName } from '../src/lib/weather.ts';
 
+// One of each kind of weather the backend reports, for the forecast tests.
+const weatherKinds = ['clear', 'rain', 'snow', 'storm', 'fog', 'cloudy'];
 let server: ViteDevServer;
 let render: typeof import('svelte/server').render;
 let createRawSnippet: typeof import('svelte').createRawSnippet;
@@ -272,7 +276,8 @@ test('Weather shows five days with low-to-high ranges, starting with today', asy
       date: new Date(Date.UTC(2026, 10, 11 + index, 12)).toISOString(),
       high: 80 + index,
       low: 60 + index,
-      condition: 'Clear',
+      condition: `Weather ${index}`,
+      icon: weatherKinds[index],
       precipitation: 0,
     })),
     alert: '',
@@ -280,20 +285,58 @@ test('Weather shows five days with low-to-high ranges, starting with today', asy
   const { body } = render(WeatherWidget, {
     props: { data, status: 'live', size: 'medium' },
   });
-  const days = [
-    ...body.matchAll(/<div class="forecast-day[^\"]*"[^>]*>([\s\S]*?)<\/div>/g),
-  ];
+  // One piece of markup per forecast card, however deeply each card nests its content.
+  const days = body.split(/(?=<div class="forecast-day(?:\s[^"]*)?")/).slice(1);
 
   assert.equal(days.length, 5);
-  assert.match(days[0][1], /Today/);
+  assert.match(days[0], /Today/);
   for (const [index, day] of days.entries()) {
-    assert.match(day[0], /aria-hidden="true"/);
-    assert.match(day[0], /visibility:\s*hidden/);
-    assert.ok(day[1].includes(`${60 + index}°`));
-    assert.ok(day[1].includes(`${80 + index}°`));
-    assert.ok(
-      day[1].indexOf(`${60 + index}°`) < day[1].indexOf(`${80 + index}°`),
-    );
+    assert.match(day, /aria-hidden="true"/);
+    assert.match(day, /visibility:\s*hidden/);
+    assert.ok(day.includes(`${60 + index}°`));
+    assert.ok(day.includes(`${80 + index}°`));
+    assert.ok(day.indexOf(`${60 + index}°`) < day.indexOf(`${80 + index}°`));
   }
   assert.doesNotMatch(body, /65°|85°/);
+});
+
+test('each forecast day shows the icon for its own weather, with the condition for screen readers', async () => {
+  const { default: WeatherWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/WeatherWidget.svelte',
+  );
+  const data = {
+    location: 'Dallas',
+    temperature: 72,
+    condition: 'Clear',
+    high: 90,
+    low: 55,
+    precipitation: 0,
+    tomorrow: 'Clear',
+    hourly: [],
+    daily: weatherKinds.slice(0, 5).map((kind, index) => ({
+      date: new Date(Date.UTC(2026, 10, 11 + index, 12)).toISOString(),
+      high: 80,
+      low: 60,
+      condition: `Weather ${index}`,
+      icon: kind,
+      precipitation: 0,
+    })),
+    alert: '',
+  };
+  const { body } = render(WeatherWidget, {
+    props: { data, status: 'live', size: 'medium' },
+  });
+  const days = body.split(/(?=<div class="forecast-day(?:\s[^"]*)?")/).slice(1);
+
+  assert.equal(days.length, 5);
+  for (const [index, day] of days.entries()) {
+    assert.ok(
+      day.includes(iconPaths[weatherIconName(weatherKinds[index])]),
+      `day ${index} should draw its ${weatherKinds[index]} icon`,
+    );
+    assert.match(day, new RegExp(`sr-only[^>]*>Weather ${index}<`));
+  }
+  // Different kinds of weather must not all draw the same picture.
+  const drawn = new Set(days.map((day) => day.match(/<path d="([^"]+)"/g)![0]));
+  assert.ok(drawn.size > 1);
 });
