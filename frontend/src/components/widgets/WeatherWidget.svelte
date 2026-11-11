@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import Icon from '../Icon.svelte';
+  import WidgetHeader from '../WidgetHeader.svelte';
   import { sourceNotice } from '../../lib/sources.ts';
   let {
     data,
@@ -15,54 +16,64 @@
   const notice = $derived(sourceNotice(status, 'Weather'));
 </script>
 
-{#if notice}<div class="widget-body">
-    <p class="widget-title">{notice.title}</p>
-    <p class="quiet">{notice.detail}</p>
-  </div>
-{:else}<div class="widget-body weather" class:has-alert={!!data.alert}>
-    <div class="weather-current">
-      <span class="weather-icon accent"><Icon name="weather" size={56} /></span
-      ><span class="temperature">{data.temperature}°</span>
-      <div>
-        <p class="widget-title">{data.condition}</p>
-        <p class="quiet">High {data.high}° · Low {data.low}°</p>
+<div class="widget-body weather" class:has-alert={!!data.alert}>
+  <WidgetHeader title="Weather">
+    {#snippet actions()}
+      {#if !notice}<div class="forecast-control">
+          <button
+            class="forecast-toggle"
+            aria-label={`Show ${forecast === 'days' ? 'hourly' : 'daily'} forecast`}
+            onclick={() => (forecast = forecast === 'days' ? 'hours' : 'days')}
+            >{forecast === 'days' ? 'Days' : 'Hours'}<Icon
+              name="down"
+              size={12}
+            /></button
+          >
+        </div>{/if}
+    {/snippet}
+  </WidgetHeader>
+  <div class="widget-content weather-content">
+    {#if notice}
+      <p class="widget-title">{notice.title}</p>
+      <p class="quiet">{notice.detail}</p>
+    {:else}
+      <div class="weather-current">
+        <span class="weather-icon accent"
+          ><Icon name="weather" size={56} /></span
+        ><span class="temperature">{data.temperature}°</span>
+        <div>
+          <p class="widget-title">{data.condition}</p>
+          <p class="quiet">High {data.high}° · Low {data.low}°</p>
+        </div>
       </div>
-    </div>
-    {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
-    <div class="forecast-strip">
-      {#if forecast === 'hours'}{#each data.hourly.slice(0, 4) as hour}<div>
-            <span>{hour.label}</span><strong>{hour.temperature}°</strong
-            >{#if size === 'large' && data.alert}<small>{hour.condition}</small
-              >{/if}
-          </div>{/each}{:else}{#each data.daily.slice(0, 4) as day, i}<div>
-            <span
-              >{i === 0
-                ? 'Today'
-                : new Date(day.date).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                  })}</span
-            ><strong>{day.high}° <small>{day.low}°</small></strong
-            >{#if size === 'large' && data.alert}<small>{day.condition}</small
-              >{/if}
-          </div>{/each}{/if}
-    </div>
-    <button
-      class="forecast-toggle"
-      aria-label={`Show ${forecast === 'days' ? 'hourly' : 'daily'} forecast`}
-      onclick={() => (forecast = forecast === 'days' ? 'hours' : 'days')}
-      >{forecast === 'days' ? 'Days' : 'Hours'}<Icon
-        name="down"
-        size={12}
-      /></button
-    >
-  </div>{/if}
+      {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
+      <div class="forecast-strip">
+        {#if forecast === 'hours'}{#each data.hourly.slice(0, 4) as hour}<div>
+              <span>{hour.label}</span><strong>{hour.temperature}°</strong
+              >{#if size === 'large' && data.alert}<small
+                  >{hour.condition}</small
+                >{/if}
+            </div>{/each}{:else}{#each data.daily.slice(0, 4) as day, i}<div>
+              <span
+                >{i === 0
+                  ? 'Today'
+                  : new Date(day.date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                    })}</span
+              ><strong>{day.high}° <small>{day.low}°</small></strong
+              >{#if size === 'large' && data.alert}<small>{day.condition}</small
+                >{/if}
+            </div>{/each}{/if}
+      </div>
+    {/if}
+  </div>
+</div>
 
 <style>
   .widget-body.weather {
-    --weather-inset: 32px;
-    position: relative;
-    padding: var(--weather-inset);
-    justify-content: center;
+    gap: 14px;
+  }
+  .weather-content {
     gap: 28px;
   }
   .weather-current {
@@ -70,7 +81,6 @@
     align-items: center;
     gap: 20px;
     min-width: 0;
-    padding-right: 72px;
   }
   .weather-icon {
     display: flex;
@@ -127,17 +137,11 @@
     margin-left: 4px;
   }
   .forecast-toggle {
-    position: absolute;
-    top: 12px;
-    right: 16px;
     font-size: 12px;
     color: var(--muted);
     border: 0;
     padding: 4px 8px;
     min-width: 64px;
-  }
-  :global(.editing) .forecast-toggle {
-    right: 48px;
   }
   .alert-copy {
     color: var(--accent);
@@ -147,17 +151,20 @@
   }
   @container (max-height: 320px) {
     .has-alert .forecast-strip,
-    .has-alert .forecast-toggle {
+    .has-alert .forecast-control {
       display: none;
-    }
-    .has-alert .weather-current {
-      padding-right: 0;
     }
   }
   @container (max-height:230px) {
     .widget-body.weather {
-      --weather-inset: 24px;
+      gap: 12px;
+    }
+    .weather-content {
       gap: 16px;
+    }
+    .forecast-strip,
+    .forecast-control {
+      display: none;
     }
     .weather-current {
       gap: 16px;
@@ -194,13 +201,12 @@
     .has-alert .alert-copy {
       font-size: 14px;
     }
-    .has-alert.widget-body.weather {
+    .has-alert .weather-content {
       gap: 8px;
     }
   }
   @container (max-width:480px) {
-    .widget-body.weather {
-      --weather-inset: 20px;
+    .weather-content {
       gap: 16px;
     }
     .weather-icon {
@@ -232,19 +238,14 @@
       font-size: 14px;
       margin-left: 2px;
     }
-    .forecast-toggle {
-      top: 8px;
-      right: 12px;
-    }
   }
   @container (max-height:180px) {
-    .widget-body.weather {
+    .weather-content {
       gap: 12px;
     }
   }
   @container (max-width:340px) {
-    .widget-body.weather {
-      --weather-inset: 16px;
+    .weather-content {
       gap: 12px;
     }
     .weather-current {
@@ -274,7 +275,9 @@
   }
   @container (max-height:120px) {
     .widget-body.weather {
-      --weather-inset: 12px;
+      gap: 8px;
+    }
+    .weather-content {
       gap: 8px;
     }
     .temperature {
@@ -299,10 +302,6 @@
     }
     .forecast-strip strong small {
       display: none;
-    }
-    .forecast-toggle {
-      top: 2px;
-      right: 8px;
     }
     .has-alert .weather-current {
       display: none;

@@ -22,9 +22,6 @@
 </script>
 
 <div class="month-calendar">
-  <div class="month-heading">
-    <h2>{calendar.label}</h2>
-  </div>
   <table aria-label={calendar.label}>
     <thead
       ><tr
@@ -48,16 +45,6 @@
 </div>
 
 <style>
-  .month-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  h2 {
-    font-size: 18px;
-  }
   table {
     width: 100%;
     border-collapse: separate;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import WidgetHeader from '../WidgetHeader.svelte';
   let { now }: { now: number } = $props();
   const parts = $derived(
     new Intl.DateTimeFormat('en-US', {
@@ -19,6 +20,7 @@
 </script>
 
 <div class="widget-body clock">
+  <WidgetHeader title="Clock" />
   <div class="clock-summary">
     <div class="clock-time">
       <span>{clock}</span><small
@@ -44,7 +46,7 @@
 
 <style>
   .clock {
-    gap: 0;
+    gap: 14px;
   }
   .clock-summary {
     display: flex;
@@ -53,7 +55,8 @@
     gap: 20px;
     width: 100%;
     min-width: 0;
-    height: 100%;
+    flex: 1 1 0;
+    min-height: 0;
   }
   .clock-date-block {
     display: flex;
@@ -65,7 +68,10 @@
     flex-shrink: 0;
   }
   .clock-time > span {
-    font-size: min(27cqw, calc(100cqh - 2 * var(--pad) - 56px), 192px);
+    font-size: max(
+      24px,
+      min(27cqw, calc(100cqh - 2 * var(--pad) - 90px), 192px)
+    );
   }
   @container (min-aspect-ratio: 3) {
     .clock-summary {
@@ -75,7 +81,10 @@
       gap: 12px;
     }
     .clock-time > span {
-      font-size: min(27cqw, 70cqh, 192px);
+      font-size: max(
+        24px,
+        min(27cqw, calc(100cqh - 2 * var(--pad) - 34px), 192px)
+      );
     }
   }
   @container (max-width: 559px) and (max-aspect-ratio: 3) {
@@ -83,7 +92,10 @@
       gap: 8px;
     }
     .clock-time > span {
-      font-size: min(24cqw, 53cqh, 144px);
+      font-size: max(
+        24px,
+        min(24cqw, calc(100cqh - 2 * var(--pad) - 70px), 144px)
+      );
     }
   }
   @container (max-height: 150px) {
@@ -117,7 +129,7 @@
       display: none;
     }
     .clock-time > span {
-      font-size: min(24cqw, 60cqh, 96px);
+      font-size: max(24px, min(24cqw, calc(100cqh - 44px), 96px));
     }
   }
 </style>

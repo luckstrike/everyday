@@ -2,6 +2,7 @@
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import { when } from '../../lib/format.ts';
   import { sourceNotice } from '../../lib/sources.ts';
+  import WidgetHeader from '../WidgetHeader.svelte';
   let {
     data,
     status,
@@ -28,14 +29,12 @@
       : when(event, now);
 </script>
 
-<div
-  class="widget-body calendar"
-  class:listing={!notice && shown.length > 0}
-  class:large={size === 'large'}
->
-  <p class="eyebrow">Up next</p>
-  {#if notice}<p class="widget-title">{notice.title}</p>
-    <p class="quiet">{notice.detail}</p>
+<div class="widget-body calendar" class:large={size === 'large'}>
+  <WidgetHeader title="Up next" />
+  {#if notice}<div class="widget-content">
+      <p class="widget-title">{notice.title}</p>
+      <p class="quiet">{notice.detail}</p>
+    </div>
   {:else if shown.length}<ol class="events">
       {#each shown as event, i}<li class="event">
           <p class="event-title" title={event.title}>{event.title}</p>
@@ -43,8 +42,10 @@
             {detail(event)}
           </p>
         </li>{/each}
-    </ol>{:else}<p class="widget-title">A little breathing room</p>
-    <p class="quiet">No upcoming events.</p>{/if}
+    </ol>{:else}<div class="widget-content">
+      <p class="widget-title">A little breathing room</p>
+      <p class="quiet">No upcoming events.</p>
+    </div>{/if}
 </div>
 
 <style>
@@ -56,11 +57,6 @@
     overflow: hidden;
   }
 
-  /* A list reads from the top under its header. The empty and notice states
-     keep the shared vertical centering. */
-  .calendar.listing {
-    justify-content: flex-start;
-  }
   /* The list is its own container, so how many cards fit depends only on the
      height it is given, not on the widget's padding or text sizes. */
   .events {
@@ -138,17 +134,9 @@
   }
 
   @container (max-height: 120px) {
-    .calendar .eyebrow {
-      display: none;
-    }
     .widget-title {
       -webkit-line-clamp: 1;
       line-clamp: 1;
-    }
-  }
-  @container (max-width: 210px) and (max-height: 150px) {
-    .calendar .eyebrow {
-      display: none;
     }
   }
 </style>

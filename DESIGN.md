@@ -6,7 +6,9 @@ Use system sans, normal weights, and a light clock face. Evergreen background ok
 
 Clock digits use tabular numbers with light tracking (-0.025em), keeping minutes distinct while retaining a compact clock face.
 
-The clock shows the time and the weekday and date only.
+Every widget uses the shared `WidgetHeader` component: a muted, normal-weight heading at the top left, with an optional `actions` snippet aligned to the right. All widgets use the shared body padding so their headings have the same inset. Use normal reading and keyboard order for controls; insert a new control before existing ones to grow the row from right to left while keeping the rightmost control anchored. Titles truncate before controls are squeezed. The actions row is 20px tall like the heading; buttons retain their 44px minimum touch target, extending into the surrounding spacing without pushing the heading down. Headers stay at the top in loading, empty, and not-connected states; the remaining content area centers those states independently.
+
+The clock shows a "Clock" heading above the time and the weekday and date.
 
 The month calendar is its own widget, with Sunday-first weeks and today highlighted. When the widget is at least 280px tall it shows the whole month with room for a six-week month. Shorter widgets show only the current week. The month is read-only and updates with the local date; it is distinct from the Up next widget, which shows the next event.
 
@@ -16,6 +18,6 @@ The display is landscape only and uses one fixed layout on a 24 by 24 grid: Cloc
 
 Appearance settings sit beside the location in the header. Evergreen remains the default; Turquoise uses deep teal surfaces and pale turquoise accents with the same spacing and contrast hierarchy. The browser stores the selected theme. A shared toast component dismisses after 4.5 seconds, pauses on hover/focus, and handles repeated notices.
 
-Weather centers current conditions and forecast as one group with equal top/bottom breathing room and a shared left inset. The sun is optically aligned to forecast text. The forecast switch sits at the top right with a 44px touch target; compact weather reduces detail rather than clipping. When the data includes an alert, compact Weather replaces the forecast with alert text, and its shortest presentation shows the warning alone. Weather spacing and responsive rules live in its component.
+Weather centers current conditions and forecast in the content area below its header, with a shared left inset. The sun is optically aligned to forecast text. The forecast switch occupies the header's right-hand actions slot with a 44px touch target, rather than floating over the weather content. Widgets at most 230px tall show current conditions without the forecast or its switch. When the data includes an alert, compact Weather replaces the forecast with alert text, and its shortest presentation shows the warning alone. Weather spacing and responsive rules live in its component.
 
 Smaller widgets show deliberately reduced content rather than scaled content. Compact tiles keep core information: event and time, or bill and amount with due date. Secondary detail gives way before core content clips.
