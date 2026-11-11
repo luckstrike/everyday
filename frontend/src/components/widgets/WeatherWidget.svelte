@@ -16,7 +16,7 @@
   const notice = $derived(sourceNotice(status, 'Weather'));
 </script>
 
-<WidgetFrame title="Weather">
+<WidgetFrame title="Weather" message={notice}>
   {#snippet actions()}
     {#if !notice}<div class="forecast-control" class:has-alert={!!data.alert}>
         <button
@@ -31,39 +31,32 @@
       </div>{/if}
   {/snippet}
   <div class="weather-content" class:has-alert={!!data.alert}>
-    {#if notice}
-      <p class="widget-title">{notice.title}</p>
-      <p class="quiet">{notice.detail}</p>
-    {:else}
-      <div class="weather-current">
-        <span class="weather-icon accent"
-          ><Icon name="weather" size={56} /></span
-        ><span class="temperature">{data.temperature}°</span>
-        <div>
-          <p class="widget-title">{data.condition}</p>
-          <p class="quiet">High {data.high}° · Low {data.low}°</p>
-        </div>
+    <div class="weather-current">
+      <span class="weather-icon accent"><Icon name="weather" size={56} /></span
+      ><span class="temperature">{data.temperature}°</span>
+      <div>
+        <p class="widget-title">{data.condition}</p>
+        <p class="quiet">High {data.high}° · Low {data.low}°</p>
       </div>
-      {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
-      <div class="forecast-strip">
-        {#if forecast === 'hours'}{#each data.hourly.slice(0, 4) as hour}<div>
-              <span>{hour.label}</span><strong>{hour.temperature}°</strong
-              >{#if size === 'large' && data.alert}<small
-                  >{hour.condition}</small
-                >{/if}
-            </div>{/each}{:else}{#each data.daily.slice(0, 4) as day, i}<div>
-              <span
-                >{i === 0
-                  ? 'Today'
-                  : new Date(day.date).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                    })}</span
-              ><strong>{day.high}° <small>{day.low}°</small></strong
-              >{#if size === 'large' && data.alert}<small>{day.condition}</small
-                >{/if}
-            </div>{/each}{/if}
-      </div>
-    {/if}
+    </div>
+    {#if data.alert}<p class="alert-copy">{data.alert}</p>{/if}
+    <div class="forecast-strip">
+      {#if forecast === 'hours'}{#each data.hourly.slice(0, 4) as hour}<div>
+            <span>{hour.label}</span><strong>{hour.temperature}°</strong
+            >{#if size === 'large' && data.alert}<small>{hour.condition}</small
+              >{/if}
+          </div>{/each}{:else}{#each data.daily.slice(0, 4) as day, i}<div>
+            <span
+              >{i === 0
+                ? 'Today'
+                : new Date(day.date).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                  })}</span
+            ><strong>{day.high}° <small>{day.low}°</small></strong
+            >{#if size === 'large' && data.alert}<small>{day.condition}</small
+              >{/if}
+          </div>{/each}{/if}
+    </div>
   </div>
 </WidgetFrame>
 

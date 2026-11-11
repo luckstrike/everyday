@@ -23,6 +23,10 @@ To add a widget, supply a title, content through the default children snippet, a
 
 Omit the actions snippet when there are no controls. Content is centered by default; a widget can give its own content wrapper `flex: 1` to fill the available space, as the event list does. Widget-specific spacing such as card padding and forecast gaps stays inside that content. The frame also exposes `--widget-content-height` for content sizing, so the clock does not repeat header or outer-padding calculations. `WidgetHeader` remains usable independently where a full widget frame is not needed.
 
+`WidgetFrame` also accepts an optional `message` prop with `{ title, detail }`. A message replaces the content snippet with shared, vertically centered text below the header; the content snippet is not rendered while the message is present. Header actions remain available, so each widget decides whether a control still makes sense in that state. Omit `message` or pass `null` to show normal content. Message titles show at most two lines, or one in widgets at most 120px tall.
+
+Widgets decide what message to pass; the frame does not inspect data or source status. Use `message={notice ?? emptyMessage}` so a source notice takes precedence over a valid empty result. Source notices still come from `sourceNotice`, while the widget supplies its own empty-result text, such as "No upcoming events" or "No upcoming bills". Empty, unavailable, and not-connected states share presentation, not meaning.
+
 The clock shows a "Clock" heading above the time and the weekday and date.
 
 The month calendar is its own widget, with Sunday-first weeks and today highlighted. When the widget is at least 280px tall it shows the whole month with room for a six-week month. Shorter widgets show only the current week. The month is read-only and updates with the local date; it is distinct from the Up next widget, which shows the next event.

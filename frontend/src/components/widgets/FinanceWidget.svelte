@@ -18,12 +18,16 @@
   const bills = $derived(
     [...data.bills].sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt)),
   );
+  const message = $derived(
+    notice ??
+      (bills.length === 0
+        ? { title: 'All clear', detail: 'No upcoming bills.' }
+        : null),
+  );
 </script>
 
-<WidgetFrame title="Bills">
-  {#if notice}<p class="widget-title">{notice.title}</p>
-    <p class="quiet">{notice.detail}</p>
-  {:else if bills[0]}<div class="bill-summary">
+<WidgetFrame title="Bills" {message}>
+  {#if bills[0]}<div class="bill-summary">
       <p class="widget-title" title={bills[0].name}>{bills[0].name}</p>
       <p class="bill-amount">{money(bills[0].amount)}</p>
     </div>
@@ -38,8 +42,7 @@
               >{money(bill.amount)}</span
             >
           </div>{/each}
-      </div>{/if}{:else}<p class="widget-title">All clear</p>
-    <p class="quiet">No upcoming bills.</p>{/if}
+      </div>{/if}{/if}
 </WidgetFrame>
 
 <style>

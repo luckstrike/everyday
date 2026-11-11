@@ -22,6 +22,12 @@
   );
   // Up to three events are rendered; the stylesheet hides the ones that don't fit.
   const shown = $derived(events.slice(0, 3));
+  const message = $derived(
+    notice ??
+      (shown.length === 0
+        ? { title: 'A little breathing room', detail: 'No upcoming events.' }
+        : null),
+  );
   // When it happens, plus where once there is room for the longer line.
   const detail = (event: DashboardState['calendar'][number]) =>
     size === 'large' && event.location
@@ -29,32 +35,18 @@
       : when(event, now);
 </script>
 
-<WidgetFrame title="Up next">
-  {#if notice}
-    <p class="widget-title">{notice.title}</p>
-    <p class="quiet">{notice.detail}</p>
-  {:else if shown.length}<ol class="events" class:large={size === 'large'}>
-      {#each shown as event, i}<li class="event">
-          <p class="event-title" title={event.title}>{event.title}</p>
-          <p class="event-when quiet" class:accent={i === 0}>
-            {detail(event)}
-          </p>
-        </li>{/each}
-    </ol>{:else}
-    <p class="widget-title">A little breathing room</p>
-    <p class="quiet">No upcoming events.</p>
-  {/if}
+<WidgetFrame title="Up next" {message}>
+  <ol class="events" class:large={size === 'large'}>
+    {#each shown as event, i}<li class="event">
+        <p class="event-title" title={event.title}>{event.title}</p>
+        <p class="event-when quiet" class:accent={i === 0}>
+          {detail(event)}
+        </p>
+      </li>{/each}
+  </ol>
 </WidgetFrame>
 
 <style>
-  .widget-title {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
   /* The list is its own container, so how many cards fit depends only on the
      height it is given, not on the widget's padding or text sizes. */
   .events {
@@ -128,13 +120,6 @@
   @container events (max-height: 163px) {
     .large .event:nth-child(n + 2) {
       display: none;
-    }
-  }
-
-  @container (max-height: 120px) {
-    .widget-title {
-      -webkit-line-clamp: 1;
-      line-clamp: 1;
     }
   }
 </style>

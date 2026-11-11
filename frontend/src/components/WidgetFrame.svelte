@@ -4,10 +4,12 @@
 
   let {
     title,
+    message = null,
     actions,
     children,
   }: {
     title: string;
+    message?: { title: string; detail: string } | null;
     actions?: Snippet;
     children: Snippet;
   } = $props();
@@ -15,7 +17,14 @@
 
 <div class="widget-frame">
   <WidgetHeader {title} {actions} />
-  <div class="widget-content">{@render children()}</div>
+  <div class="widget-content">
+    {#if message}
+      <p class="widget-title message-title">{message.title}</p>
+      <p class="quiet">{message.detail}</p>
+    {:else}
+      {@render children()}
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -45,6 +54,13 @@
     min-height: 0;
     gap: 14px;
   }
+  .message-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   @container (max-width: 340px) {
     .widget-frame {
       --widget-padding-block: 16px;
@@ -64,6 +80,12 @@
       --widget-padding-block: 10px;
       --widget-padding-inline: 16px;
       --widget-header-gap: 4px;
+    }
+  }
+  @container (max-height: 120px) {
+    .message-title {
+      -webkit-line-clamp: 1;
+      line-clamp: 1;
     }
   }
 </style>
