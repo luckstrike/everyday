@@ -101,7 +101,7 @@ main {
   --gap: 24px;
   --pad: 28px;
   height: 100dvh;
-  padding: 36px 48px 28px;
+  padding: 48px;
   display: grid;
   grid-template-rows: 44px minmax(0, 1fr) 52px;
   gap: 20px;

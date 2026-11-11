@@ -2,7 +2,7 @@
 
 Reference: Paper Ambient Landscape supplied by the owner. A wall display in a softly lit home should feel quiet, readable, and stable.
 
-Use system sans, normal weights, and a light clock face. Evergreen background oklch(24.30% .0194 167.17), raised surface oklch(29.53% .0268 163.93), sage accent oklch(82.38% .0619 130.22), primary text oklch(92.82% .0140 124.56), muted text oklch(74.91% .0230 149.61), outline oklch(39.45% .0284 156.49). All widgets have a 1px outline and 18px radius. No decorative shadows except floating controls.
+Use system sans, normal weights, and a light clock face. Evergreen background oklch(24.30% .0194 167.17), raised surface oklch(29.53% .0268 163.93), sage accent oklch(82.38% .0619 130.22), primary text oklch(92.82% .0140 124.56), muted text oklch(74.91% .0230 149.61), outline oklch(39.45% .0284 156.49). The raised surface is for controls and floating elements only (hovered and selected buttons, the settings popover, the toast); widgets never use it. All widgets have a 1px outline and 18px radius. No decorative shadows except floating controls.
 
 Clock digits use tabular numbers with light tracking (-0.025em), keeping minutes distinct while retaining a compact clock face.
 
