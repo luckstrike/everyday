@@ -28,12 +28,12 @@ backend services
       ↓
 normalized application state
       ↓
-priority engine
-      ↓
-screen manager
+fixed layout
       ↓
 widgets / UI
 ```
+
+A priority engine and screen manager sit between application state and the layout in the long-term design. They are deferred, not part of the MVP. See "Deferred (post-MVP)" below.
 
 Do not move business logic into UI components unless it is strictly presentation logic.
 
@@ -57,41 +57,11 @@ Widgets should not directly fetch external APIs.
 
 ## Layout
 
-The user has a persistent configured layout.
+The MVP has one fixed landscape layout, defined in code.
 
-Dynamic priority/emphasis behavior must never permanently modify that layout.
+Widgets are placed on a fixed 24 by 24 grid. Keep that placement format so a future admin panel can edit the same data.
 
-Keep these concepts separate:
-
-```text
-User Layout
-Dynamic Presentation State
-```
-
-Dynamic presentation states should initially be limited to:
-
-```text
-NORMAL
-EMPHASIZED
-FULLSCREEN
-```
-
-## Priority system
-
-Keep the priority engine deterministic and testable.
-
-Priority calculations should not live inside Svelte components.
-
-Support:
-
-- base priority
-- event modifiers
-- cooldown
-- minimum display duration
-- maximum display duration
-- priority decay
-
-Avoid adding complicated scheduling logic unless the current requirements need it.
+The MVP has no layout editing, no multiple boards, and no portrait layout.
 
 ## Dependencies
 
@@ -147,12 +117,10 @@ Prioritize tests for behavior rather than superficial implementation details.
 
 Important areas include:
 
-- priority calculations
-- screen selection
-- cooldowns
-- event expiration
-- priority decay
-- layout restoration
+- fixed layouts staying inside the grid without overlapping
+- month calendar date placement
+- date and time boundaries
+- mock data staying stable while polling
 
 ## Agent behavior
 
@@ -185,3 +153,22 @@ Optimize first for:
 3. quick iteration
 4. reliable continuous operation
 5. eventual Raspberry Pi compatibility
+
+## Deferred (post-MVP)
+
+These were built in the prototype and removed for the MVP. The git tag `prototype-v0` preserves them; restore code from the tag rather than rewriting it.
+
+Do not reintroduce these without explicit instruction.
+
+- Widget and layout editing. Planned as an admin panel, not part of V1.
+- Multiple named boards, and portrait layouts.
+- Sports and Around Dallas widgets. Planned for V1+ or V2.
+- Priority engine and attention system. When it returns, keep it deterministic and testable, outside Svelte components, and support:
+  - base priority
+  - event modifiers
+  - cooldown
+  - minimum display duration
+  - maximum display duration
+  - priority decay
+- Dynamic presentation states: NORMAL, EMPHASIZED, FULLSCREEN. They must never permanently modify the user's layout. Keep User Layout and Dynamic Presentation State separate.
+- Screen manager.

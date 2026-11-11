@@ -1,11 +1,9 @@
 export type WidgetId =
   'clock' | 'weather' | 'sports' | 'finance' | 'calendar' | 'discover';
 export type Size = 'small' | 'medium' | 'large';
-export type Presentation = 'NORMAL' | 'EMPHASIZED' | 'FULLSCREEN';
 export interface WidgetDefinition {
   id: WidgetId;
   title: string;
-  basePriority: number;
   minWidth: number;
   minHeight: number;
   defaultWidth: number;
@@ -13,7 +11,6 @@ export interface WidgetDefinition {
 }
 export interface Config {
   pollIntervalMs: number;
-  development: boolean;
 }
 export interface Placement {
   id: WidgetId;
@@ -22,18 +19,9 @@ export interface Placement {
   w: number;
   h: number;
 }
-export interface AttentionEvent {
-  id: string;
-  widget: WidgetId;
-  kind: string;
-  startsAt: string;
-  expiresAt: string;
-  decay: boolean;
-}
 export interface DashboardState {
   generatedAt: string;
   mock: boolean;
-  scenario: string;
   weather: {
     location: string;
     temperature: number;
@@ -82,5 +70,4 @@ export interface DashboardState {
     price: string;
     reason: string;
   }[];
-  events: AttentionEvent[];
 }

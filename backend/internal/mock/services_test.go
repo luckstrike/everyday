@@ -5,20 +5,10 @@ import (
 	"time"
 )
 
-func TestScenariosExpireAndMockDatesStayStable(t *testing.T) {
+func TestMockDatesStayStableWhilePolling(t *testing.T) {
 	anchor := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
-	for _, scenario := range []string{"rain", "severe", "live", "starting", "final", "bill", "financial", "calendar"} {
-		state := Build(anchor, anchor, scenario, anchor)
-		if len(state.Events) != 1 || state.Scenario != scenario {
-			t.Fatalf("missing %s", scenario)
-		}
-		expired := Build(anchor, anchor.Add(2*time.Minute), scenario, anchor)
-		if len(expired.Events) != 0 || expired.Scenario != "normal" {
-			t.Fatalf("unexpired %s", scenario)
-		}
-	}
-	first := Build(anchor, anchor, "normal", anchor)
-	later := Build(anchor, anchor.Add(time.Hour), "normal", anchor)
+	first := Build(anchor, anchor)
+	later := Build(anchor, anchor.Add(time.Hour))
 	if first.Calendar[0].StartsAt != later.Calendar[0].StartsAt {
 		t.Fatal("mock date moved during polling")
 	}
@@ -26,7 +16,7 @@ func TestScenariosExpireAndMockDatesStayStable(t *testing.T) {
 
 func TestDailyForecastAndLocalSamples(t *testing.T) {
 	anchor := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
-	state := Build(anchor, anchor, "normal", anchor)
+	state := Build(anchor, anchor)
 	if len(state.Weather.Daily) != 4 || len(state.LocalEvents) != 3 {
 		t.Fatal("missing forecast or local event samples")
 	}
@@ -35,7 +25,7 @@ func TestDailyForecastAndLocalSamples(t *testing.T) {
 			t.Fatal("invalid daily forecast")
 		}
 	}
-	later := Build(anchor, anchor.Add(time.Hour), "normal", anchor)
+	later := Build(anchor, anchor.Add(time.Hour))
 	if state.LocalEvents[0].StartsAt != later.LocalEvents[0].StartsAt {
 		t.Fatal("local event sample moved while polling")
 	}

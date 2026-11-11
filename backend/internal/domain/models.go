@@ -62,49 +62,37 @@ type CalendarEvent struct {
 	StartsAt time.Time `json:"startsAt"`
 	EndsAt   time.Time `json:"endsAt"`
 }
-type AttentionEvent struct {
-	ID        string    `json:"id"`
-	Widget    string    `json:"widget"`
-	Kind      string    `json:"kind"`
-	StartsAt  time.Time `json:"startsAt"`
-	ExpiresAt time.Time `json:"expiresAt"`
-	Decay     bool      `json:"decay"`
-}
 type State struct {
-	LocalEvents []LocalEvent     `json:"localEvents"`
-	GeneratedAt time.Time        `json:"generatedAt"`
-	Mock        bool             `json:"mock"`
-	Scenario    string           `json:"scenario"`
-	Weather     Weather          `json:"weather"`
-	Sports      Sports           `json:"sports"`
-	Finance     Finance          `json:"finance"`
-	Calendar    []CalendarEvent  `json:"calendar"`
-	Events      []AttentionEvent `json:"events"`
+	LocalEvents []LocalEvent    `json:"localEvents"`
+	GeneratedAt time.Time       `json:"generatedAt"`
+	Mock        bool            `json:"mock"`
+	Weather     Weather         `json:"weather"`
+	Sports      Sports          `json:"sports"`
+	Finance     Finance         `json:"finance"`
+	Calendar    []CalendarEvent `json:"calendar"`
 }
 type Widget struct {
 	ID            string `json:"id"`
 	Title         string `json:"title"`
-	BasePriority  int    `json:"basePriority"`
 	MinWidth      int    `json:"minWidth"`
 	MinHeight     int    `json:"minHeight"`
 	DefaultWidth  int    `json:"defaultWidth"`
 	DefaultHeight int    `json:"defaultHeight"`
 }
 type Config struct {
-	PollIntervalMs int  `json:"pollIntervalMs"`
-	Development    bool `json:"development"`
+	PollIntervalMs int `json:"pollIntervalMs"`
 }
 
 func Widgets() []Widget {
 	return []Widget{
-		{"clock", "Time & date", 10, 6, 2, 14, 12},
-		{"weather", "Weather", 20, 6, 2, 10, 12},
-		{"sports", "Sports", 20, 6, 2, 24, 4},
-		{"finance", "Upcoming bills", 25, 6, 2, 7, 8},
-		{"calendar", "Calendar", 25, 6, 2, 7, 8},
-		{"discover", "Around Dallas", 15, 6, 2, 10, 8},
+		{"clock", "Time & date", 6, 2, 14, 12},
+		{"weather", "Weather", 6, 2, 10, 12},
+		{"sports", "Sports", 6, 2, 24, 4},
+		{"finance", "Upcoming bills", 6, 2, 7, 8},
+		{"calendar", "Calendar", 6, 2, 7, 8},
+		{"discover", "Around Dallas", 6, 2, 10, 8},
 	}
 }
-func Configuration(dev bool) Config {
-	return Config{PollIntervalMs: 5000, Development: dev}
+func Configuration() Config {
+	return Config{PollIntervalMs: 5000}
 }

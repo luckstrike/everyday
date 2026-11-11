@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import type { Candidate } from '../lib/priority.ts';
   import Widget from './Widget.svelte';
   import Icon from './Icon.svelte';
   import { canPlace, GRID, overlaps } from '../lib/boards.ts';
@@ -18,7 +17,6 @@
     editing,
     definitions,
     onchange,
-    attention,
     previews = [],
     pendingId = null,
     onplace,
@@ -30,7 +28,6 @@
     editing: boolean;
     definitions: WidgetDefinition[];
     onchange: (items: Placement[]) => void;
-    attention?: Candidate;
     previews?: Placement[];
     pendingId?: WidgetId | null;
     onplace: (item: Placement) => void;
@@ -131,7 +128,6 @@
   {#each items as item (item.id)}<section
       class="widget"
       class:pending={pendingId === item.id}
-      class:emphasized={!editing && attention?.widget === item.id}
       class:small={sizeFor(item) === 'small'}
       style={position(item)}
       aria-label={definitions.find((d) => d.id === item.id)?.title}

@@ -5,7 +5,7 @@ install:
 dev:
 	GO="$(GO)" ./scripts/dev.sh
 backend:
-	cd backend && DASHBOARD_DEV=1 $(GO) run ./cmd/server
+	cd backend && $(GO) run ./cmd/server
 frontend:
 	cd frontend && npm run dev
 check:

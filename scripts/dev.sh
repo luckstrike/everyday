@@ -24,7 +24,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 (cd backend && "$GO" build -o "$bin_dir/server" ./cmd/server)
-DASHBOARD_DEV=1 "$bin_dir/server" &
+"$bin_dir/server" &
 backend_pid=$!
 (cd frontend && exec node node_modules/vite/bin/vite.js --host 127.0.0.1) &
 frontend_pid=$!

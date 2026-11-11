@@ -20,59 +20,8 @@ func calendarState(now time.Time) []domain.CalendarEvent {
 }
 
 // anchor is fixed for the process lifetime, so polling does not move mock dates.
-func Build(anchor, now time.Time, scenario string, started time.Time) domain.State {
-	state := domain.State{GeneratedAt: now, Mock: true, Scenario: "normal", Weather: weatherState(anchor), LocalEvents: localEventsState(anchor), Sports: sportsState(anchor), Finance: financeState(anchor), Calendar: calendarState(anchor), Events: []domain.AttentionEvent{}}
-	if scenario == "normal" || !now.Before(started.Add(2*time.Minute)) {
-		return state
-	}
-	state.Scenario = scenario
-	var widget, kind string
-	switch scenario {
-	case "rain":
-		widget, kind = "weather", "rain"
-		state.Weather.Condition = "Rain in 15 minutes"
-		state.Weather.Precipitation = 85
-	case "severe":
-		widget, kind = "weather", "severe"
-		state.Weather.Condition = "Thunderstorms"
-		state.Weather.Precipitation = 100
-		state.Weather.Alert = "Simulated severe thunderstorm warning. Stay indoors, away from windows."
-	case "live":
-		widget, kind = "sports", "live"
-		state.Sports.Status = "live"
-		state.Sports.HomeScore = 86
-		state.Sports.AwayScore = 82
-		state.Sports.Detail = "Q3 · 04:32 remaining"
-	case "starting":
-		widget, kind = "sports", "starting"
-		state.Sports.StartsAt = started.Add(40 * time.Minute)
-	case "final":
-		widget, kind = "sports", "final"
-		state.Sports.Status = "final"
-		state.Sports.HomeScore = 112
-		state.Sports.AwayScore = 108
-		state.Sports.Detail = "Final · Mavericks win"
-	case "bill":
-		widget, kind = "finance", "tomorrow"
-		state.Finance.Bills[0].DueAt = started.Add(24 * time.Hour)
-	case "financial":
-		widget, kind = "finance", "alert"
-	case "calendar":
-		widget, kind = "calendar", "soon"
-		state.Calendar[0].StartsAt = started.Add(20 * time.Minute)
-		state.Calendar[0].EndsAt = started.Add(2 * time.Hour)
-	default:
-		return state
-	}
-	state.Events = append(state.Events, domain.AttentionEvent{ID: scenario + ":" + started.Format(time.RFC3339Nano), Widget: widget, Kind: kind, StartsAt: started, ExpiresAt: started.Add(2 * time.Minute), Decay: scenario == "final"})
-	return state
-}
-func ValidScenario(s string) bool {
-	switch s {
-	case "normal", "rain", "severe", "live", "starting", "final", "bill", "financial", "calendar":
-		return true
-	}
-	return false
+func Build(anchor, now time.Time) domain.State {
+	return domain.State{GeneratedAt: now, Mock: true, Weather: weatherState(anchor), LocalEvents: localEventsState(anchor), Sports: sportsState(anchor), Finance: financeState(anchor), Calendar: calendarState(anchor)}
 }
 
 // Illustrative recommendations only, not a real venue schedule or personalization model.

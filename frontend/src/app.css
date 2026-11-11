@@ -167,19 +167,6 @@ main.portrait {
   overflow: hidden;
   container-type: size;
 }
-.widget.emphasized {
-  border-color: var(--accent);
-  animation: priority-border-pulse 3s ease-in-out 3;
-}
-@keyframes priority-border-pulse {
-  0%,
-  100% {
-    border-color: var(--accent);
-  }
-  50% {
-    border-color: color-mix(in oklch, var(--line) 65%, var(--accent));
-  }
-}
 .widget.pending {
   opacity: 0.28;
 }
@@ -499,8 +486,7 @@ footer > span {
   font-size: 28px;
   color: var(--text);
 }
-.widget-picker,
-.dev-panel {
+.widget-picker {
   position: absolute;
   width: 380px;
   right: 48px;
@@ -648,11 +634,6 @@ footer > span {
 .danger {
   color: oklch(83% 0.07 40);
 }
-.scenario-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
 .loading {
   display: flex;
   flex-direction: column;
@@ -798,8 +779,7 @@ footer > span {
     font-size: 14px;
     padding: 8px 12px;
   }
-  .widget-picker,
-  .dev-panel {
+  .widget-picker {
     right: 16px;
     bottom: 80px;
     max-width: calc(100vw - 32px);
@@ -838,8 +818,7 @@ footer > span {
     padding: 12px 24px;
     gap: 12px;
   }
-  .widget-picker,
-  .dev-panel {
+  .widget-picker {
     right: 24px;
     bottom: 80px;
     max-height: calc(100dvh - 150px);
@@ -849,9 +828,6 @@ footer > span {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .widget.emphasized {
-    animation: none;
-  }
   *,
   *::before,
   *::after {

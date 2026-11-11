@@ -8,7 +8,7 @@
   import DiscardLayoutDialog from './components/DiscardLayoutDialog.svelte';
   import { loadTheme, THEME_KEY, type Theme } from './lib/theme.ts';
   import { catalog } from './lib/catalog.ts';
-  import { getConfig, getState, getWidgets, simulate } from './lib/api.ts';
+  import { getConfig, getState, getWidgets } from './lib/api.ts';
   import {
     BOARDS_KEY,
     initialBoards,
@@ -21,14 +21,6 @@
     type BoardStore,
     type Orientation,
   } from './lib/boards.ts';
-  import { billEvents } from './lib/bills.ts';
-  import { rankWidgets } from './lib/priority.ts';
-  import {
-    initialPresentation,
-    updatePresentation,
-    attentionFor,
-    displayLayout,
-  } from './lib/presentation.ts';
   import type {
     Config,
     DashboardState,
@@ -47,9 +39,7 @@
   let editing = $state(false),
     picker = $state(false),
     boardMenu = $state(false),
-    creating = $state(false),
-    devPanel = $state(false),
-    busy = $state(false);
+    creating = $state(false);
   let draft = $state<Placement[]>([]),
     editOrientation = $state<Orientation>('landscape');
   let editEntry = $state<'add' | 'layout'>('layout');
@@ -86,23 +76,7 @@
   const dirty = $derived(
     editing && !layoutsEqual(draft, board.layouts[editOrientation]),
   );
-  const ranks = $derived(
-    rankWidgets(
-      definitions,
-      [
-        ...(dashboard?.events ?? []),
-        ...billEvents(dashboard?.finance.bills ?? [], now),
-      ],
-      now,
-    ),
-  );
-  let presentation = $state(initialPresentation());
-  $effect(() => {
-    const next = updatePresentation(presentation, ranks, now);
-    if (next !== presentation) presentation = next;
-  });
-  const attention = $derived(attentionFor(presentation, ranks, saved));
-  const visible = $derived(editing ? draft : displayLayout(saved, attention));
+  const visible = $derived(editing ? draft : saved);
   const available = $derived(
     pending
       ? validPositions(
@@ -131,17 +105,6 @@
     return result;
   });
   const stale = $derived(lastSuccess > 0 && now - lastSuccess > 15000);
-  const scenarios = [
-    ['normal', 'Normal day'],
-    ['rain', 'Rain soon'],
-    ['severe', 'Severe weather'],
-    ['starting', 'Game starting soon'],
-    ['live', 'Live basketball'],
-    ['final', 'Final score'],
-    ['bill', 'Bill due tomorrow'],
-    ['financial', 'Bill alert'],
-    ['calendar', 'Event in 20 minutes'],
-  ];
   async function refresh() {
     try {
       if (!config) {
@@ -220,7 +183,6 @@
       editing = true;
     }
     boardMenu = false;
-    devPanel = false;
     picker = showPicker;
     pending = null;
     notice = '';
@@ -352,18 +314,6 @@
       beginEdit();
     }
   }
-  async function scenario(value: string) {
-    busy = true;
-    try {
-      dashboard = await simulate(value);
-      lastSuccess = Date.now();
-      error = '';
-    } catch {
-      notify('Simulation unavailable. Start the backend with DASHBOARD_DEV=1.');
-    } finally {
-      busy = false;
-    }
-  }
   async function fullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -386,10 +336,7 @@
           )?.focus(),
         );
     } else if (picker) closePicker();
-    else {
-      boardMenu = false;
-      devPanel = false;
-    }
+    else boardMenu = false;
   }
 </script>
 
@@ -443,7 +390,6 @@
           aria-controls="board-menu"
           onclick={() => {
             boardMenu = !boardMenu;
-            devPanel = false;
           }}>{board.name}<Icon name="down" size={16} /></button
         >
         {#if boardMenu}<div id="board-menu" class="board-menu popover">
@@ -483,13 +429,7 @@
               >{/if}
             <div class="board-menu-tools">
               <button onclick={() => beginEdit(false)}>Edit layout</button
-              ><button onclick={fullscreen}>Fullscreen</button
-              >{#if import.meta.env.DEV && config?.development}<button
-                  onclick={() => {
-                    devPanel = true;
-                    boardMenu = false;
-                  }}>Simulate</button
-                >{/if}
+              ><button onclick={fullscreen}>Fullscreen</button>
             </div>
             <p class="menu-footnote">
               Boards switch only when you choose.<br />Each board fits on one
@@ -511,7 +451,6 @@
           {now}
           {editing}
           {definitions}
-          {attention}
           previews={available}
           pendingId={pending?.id ?? null}
           onchange={(items) => {
@@ -609,25 +548,4 @@
         );
       }}
     />{/if}
-  {#if devPanel}<aside
-      class="dev-panel popover"
-      aria-label="Development simulations"
-    >
-      <div class="popover-heading">
-        <h2>Scenario lab</h2>
-        <button
-          class="icon-button"
-          aria-label="Close simulations"
-          onclick={() => (devPanel = false)}><Icon name="close" /></button
-        >
-      </div>
-      <p class="quiet">Mock events expire after 2 minutes. Boards stay put.</p>
-      <div class="scenario-buttons">
-        {#each scenarios as [value, label]}<button
-            disabled={busy}
-            class:selected={dashboard?.scenario === value}
-            onclick={() => scenario(value)}>{label}</button
-          >{/each}
-      </div>
-    </aside>{/if}
 </main>

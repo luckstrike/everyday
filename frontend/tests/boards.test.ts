@@ -17,7 +17,6 @@ const definitions = widgetIds.map((id) => ({
   title: id,
   minWidth: 6,
   minHeight: 2,
-  basePriority: 10,
   defaultWidth: 4,
   defaultHeight: 3,
 })) satisfies WidgetDefinition[];

@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	server := &http.Server{Addr: "127.0.0.1:8080", Handler: api.New(os.Getenv("DASHBOARD_DEV") == "1"), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Addr: "127.0.0.1:8080", Handler: api.New(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() {
