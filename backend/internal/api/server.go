@@ -16,7 +16,6 @@ func New() http.Handler {
 	s := &Server{anchor: time.Now()}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/state", s.state)
-	mux.HandleFunc("GET /api/widgets", func(w http.ResponseWriter, r *http.Request) { respond(w, domain.Widgets()) })
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) { respond(w, domain.Configuration()) })
 	return mux
 }

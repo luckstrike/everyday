@@ -71,28 +71,10 @@ type State struct {
 	Finance     Finance         `json:"finance"`
 	Calendar    []CalendarEvent `json:"calendar"`
 }
-type Widget struct {
-	ID            string `json:"id"`
-	Title         string `json:"title"`
-	MinWidth      int    `json:"minWidth"`
-	MinHeight     int    `json:"minHeight"`
-	DefaultWidth  int    `json:"defaultWidth"`
-	DefaultHeight int    `json:"defaultHeight"`
-}
 type Config struct {
 	PollIntervalMs int `json:"pollIntervalMs"`
 }
 
-func Widgets() []Widget {
-	return []Widget{
-		{"clock", "Time & date", 6, 2, 14, 12},
-		{"weather", "Weather", 6, 2, 10, 12},
-		{"sports", "Sports", 6, 2, 24, 4},
-		{"finance", "Upcoming bills", 6, 2, 7, 8},
-		{"calendar", "Calendar", 6, 2, 7, 8},
-		{"discover", "Around Dallas", 6, 2, 10, 8},
-	}
-}
 func Configuration() Config {
 	return Config{PollIntervalMs: 5000}
 }

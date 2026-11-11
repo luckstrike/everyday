@@ -1,14 +1,6 @@
 export type WidgetId =
   'clock' | 'weather' | 'sports' | 'finance' | 'calendar' | 'discover';
 export type Size = 'small' | 'medium' | 'large';
-export interface WidgetDefinition {
-  id: WidgetId;
-  title: string;
-  minWidth: number;
-  minHeight: number;
-  defaultWidth: number;
-  defaultHeight: number;
-}
 export interface Config {
   pollIntervalMs: number;
 }

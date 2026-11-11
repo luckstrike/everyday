@@ -8,7 +8,7 @@ import (
 
 func TestEndpoints(t *testing.T) {
 	h := New()
-	for _, path := range []string{"/api/state", "/api/config", "/api/widgets"} {
+	for _, path := range []string{"/api/state", "/api/config"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if w.Code != 200 || !json.Valid(w.Body.Bytes()) {
@@ -16,10 +16,12 @@ func TestEndpoints(t *testing.T) {
 		}
 	}
 }
-func TestScenarioEndpointIsGone(t *testing.T) {
-	w := httptest.NewRecorder()
-	New().ServeHTTP(w, httptest.NewRequest("POST", "/api/scenario", nil))
-	if w.Code != 404 && w.Code != 405 {
-		t.Fatal(w.Code)
+func TestRemovedEndpointsAreGone(t *testing.T) {
+	for _, path := range []string{"/api/widgets", "/api/scenario"} {
+		w := httptest.NewRecorder()
+		New().ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 404 {
+			t.Fatalf("%s: %d", path, w.Code)
+		}
 	}
 }
