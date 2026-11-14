@@ -34,6 +34,32 @@ after(async () => {
   await server?.close();
 });
 
+test('month and compact calendars retain date placement and today across different week counts', async () => {
+  const { default: MonthCalendar } = await server.ssrLoadModule(
+    '/src/components/MonthCalendar.svelte',
+  );
+  for (const { year, month, day, weeks } of [
+    { year: 2026, month: 1, day: 14, weeks: 4 },
+    { year: 2026, month: 7, day: 31, weeks: 6 },
+    { year: 2024, month: 1, day: 29, weeks: 5 },
+  ]) {
+    for (const week of [false, true]) {
+      const { body } = render(MonthCalendar, {
+        props: { now: new Date(year, month, day, 12).getTime(), week },
+      });
+      const dates = body.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/)![1];
+      assert.equal((dates.match(/<tr\b/g) ?? []).length, week ? 1 : weeks);
+      assert.equal((body.match(/scope="col"/g) ?? []).length, 7);
+      assert.equal((body.match(/aria-current="date"/g) ?? []).length, 1);
+      const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      assert.match(
+        body,
+        new RegExp(`datetime="${date}"[^>]*aria-current="date"`),
+      );
+    }
+  }
+});
+
 test('a widget renders its heading before content without requiring actions', () => {
   const children = createRawSnippet(() => ({
     render: () => '<p>No upcoming events.</p>',

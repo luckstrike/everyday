@@ -21,7 +21,7 @@
     `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 </script>
 
-<div class="month-calendar">
+<div class="month-calendar" style:--calendar-rows={rows.length}>
   <table aria-label={calendar.label}>
     <thead
       ><tr
@@ -45,8 +45,18 @@
 </div>
 
 <style>
+  .month-calendar {
+    --calendar-day-size: min(
+      72px,
+      calc(100cqw / 7 - 8px),
+      calc((100cqh - 32px) / var(--calendar-rows) - 4px)
+    );
+    width: 100%;
+    height: 100%;
+  }
   table {
     width: 100%;
+    height: 100%;
     border-collapse: separate;
     border-spacing: 0 4px;
     table-layout: fixed;
@@ -54,8 +64,10 @@
     font-variant-numeric: tabular-nums;
   }
   th {
-    padding: 0 0 6px;
-    font-size: 12px;
+    height: 24px;
+    padding: 0;
+    font-size: clamp(12px, calc(var(--calendar-day-size) * 0.3), 18px);
+    line-height: 1.2;
     font-weight: 400;
     color: var(--muted);
   }
@@ -63,16 +75,16 @@
     text-decoration: none;
   }
   td {
-    height: 28px;
     padding: 0;
-    font-size: 14px;
+    font-size: clamp(14px, calc(var(--calendar-day-size) * 0.45), 32px);
+    line-height: 1;
   }
   time {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: var(--calendar-day-size);
+    height: var(--calendar-day-size);
     border-radius: 50%;
   }
   .today {
