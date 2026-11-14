@@ -15,6 +15,27 @@ Open **http://127.0.0.1:5173**. The API binds to **127.0.0.1:8080**. Both proces
 
 Use the browser's fullscreen command to fill the display. For a wall session, prevent macOS display sleep through system settings or `caffeinate -d` in another terminal.
 
+### Run the built dashboard
+
+For normal use rather than development:
+
+```sh
+make run
+```
+
+This builds the frontend and Go binary, then runs **one Go HTTP server** at **http://127.0.0.1:8080**, serving both the built dashboard and `/api` on the same origin. Vite is not running. Stop `make dev` first if it is running: both modes use port 8080, and a conflict fails visibly. Ctrl-C stops the server, allowing active requests up to five seconds to finish. The server remains localhost-only; this does not enable access from other devices or change the editing protections.
+
+To build once and start without rebuilding:
+
+```sh
+make build
+./build/everyday -web-dir ./frontend/dist
+```
+
+The binary and the built frontend directory are the runtime artifacts; Node.js and Go are needed to build them, but neither is needed to run them. Keep the whole frontend directory, including `assets/`, beside the binary or pass its location with `-web-dir`. The path is relative to the working directory unless absolute. Missing `index.html` is a startup error. Settings addresses also work here, for example `http://127.0.0.1:8080/#/settings/location`.
+
+Use `make dev` for hot reload. Omitting `-web-dir` keeps the Go server API-only, as used by `make backend` and the development runner. `GO=/absolute/path/to/go make run` selects the build's Go installation, just as with `make dev`.
+
 ## Configure
 
 Settings come from three places; later ones win: built-in defaults, then the config file, then environment variables. The config file holds no secrets. It is `everyday/config.json` in your user config directory (on macOS, `~/Library/Application Support/everyday/config.json`) unless `EVERYDAY_CONFIG` names another path. Every field is optional, and a misspelled field is an error:
@@ -168,14 +189,14 @@ Svelte is the only frontend runtime dependency. Go uses its standard library. No
 
 ```sh
 make check   # Go race tests + vet, Svelte/TS checks, Node behavioral tests
-make build   # Go binary in /tmp, frontend build in frontend/dist
+make build   # Go binary in build/everyday, frontend build in frontend/dist
 ```
 
 Format with `cd frontend && npm run format`.
 
 Tests cover that the fixed layout stays inside the grid without overlapping, month dates and the current-week row, that mock dates stay stable while polling, Open-Meteo parsing, the bills file and due-date arithmetic (month ends, leap years, year rollover), that the weather and calendar caches keep the last good data through failures, the Google sign-in flow (PKCE, state checks, token refresh), and calendar event handling (all-day events lead their day, cancelled and declined events, merged calendars, mirroring and excluding calendars, one broken calendar being skipped), and the config file. The intended LCD still needs a physical legibility and long-running check.
 
-For a local production preview, run the backend, build the frontend, and run `npm run preview` in `frontend/` at http://127.0.0.1:4173.
+Use `make run` for a production-style local session with Go serving the built frontend and API together. Missing assets and unknown API routes return 404 rather than the app HTML; directory listings and hidden files are not served. HTML is not stored in the browser cache, and other assets revalidate when requested. The intended LCD still needs a physical legibility check and an overnight reliability run before appliance deployment.
 
 ## After the MVP
 

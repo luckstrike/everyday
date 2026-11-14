@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"io/fs"
 	"log"
 	"net/http"
@@ -16,9 +17,12 @@ import (
 	"everyday/backend/internal/config"
 	"everyday/backend/internal/gcal"
 	"everyday/backend/internal/weather"
+	"everyday/backend/internal/web"
 )
 
 func main() {
+	webDir := flag.String("web-dir", "", "built frontend directory to serve alongside the API; omit for API-only development")
+	flag.Parse()
 	cfg, err := config.Load(os.Getenv, config.DefaultFile())
 	if err != nil {
 		log.Fatal(err)
@@ -46,17 +50,34 @@ func main() {
 		opts.BillsStore = source
 	}
 
-	server := &http.Server{Addr: "127.0.0.1:8080", Handler: api.New(opts), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	handler := api.New(opts)
+	if *webDir != "" {
+		handler, err = web.New(handler, os.DirFS(*webDir))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	server := &http.Server{Addr: "127.0.0.1:8080", Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		server.Shutdown(shutdown)
+		if err := server.Shutdown(shutdown); err != nil {
+			log.Printf("HTTP shutdown: %v", err)
+			server.Close()
+		}
 	}()
-	log.Printf("Dashboard API at http://%s", server.Addr)
+	if *webDir == "" {
+		log.Printf("Dashboard API at http://%s", server.Addr)
+	} else {
+		log.Printf("Dashboard and API at http://%s (frontend: %s)", server.Addr, *webDir)
+	}
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+	<-shutdownDone
 }
 
 // billsSource serves the bills file. The file need not exist yet: until it does the

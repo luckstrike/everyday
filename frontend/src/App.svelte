@@ -143,7 +143,7 @@
           ? 'Data delayed · showing last received data'
           : dashboard && Object.values(dashboard.sources).includes('mock')
             ? 'Mock data'
-            : 'Local display'}</span
+            : ''}</span
     >
   </footer>
   {#if view.name === 'settings'}<SettingsPanel
