@@ -80,22 +80,25 @@ Bills are typed in, not fetched: there is no bank or budgeting-app connection, a
 {
   "bills": [
     { "name": "Rent", "amount": 1850, "day": 1 },
-    { "name": "Internet", "amount": 65, "day": 15, "autopay": true }
+    { "name": "Internet", "amount": 65, "day": 15 }
   ]
 }
 ```
 
 - Every bill repeats monthly, on `day` (1 to 31). Today's date counts as still due. A bill due on the 29th, 30th or 31st falls on the last day of a shorter month.
-- `amount` is the usual amount and `autopay` defaults to false. Both are shown on the card as written. A bill whose amount changes each month shows its usual figure.
+- `amount` is the usual amount, shown with cents. A bill whose amount changes each month shows its usual figure.
+- A bill can be ticked as paid, from the circle beside it in [Settings](#settings). That saves `paidFor`, the due date it was paid for, and the bill counts as paid only while that is the due date it is showing, so the tick clears itself when the next month's bill comes round. Paying ahead works: tick it any time before the due date.
+- On the dashboard, bills still to pay come first, soonest due, followed by the ones already paid, dimmed with a check and the word "Paid". When space is short, what is left to pay gets it.
+- Files from before this change may carry an `autopay` field per bill. It is read and ignored, and the next save from Settings leaves it out.
 - The file is re-read whenever it changes, so edits appear within a few seconds with no restart. Leaving the file out shows "No bills yet". A mistake in it (a misspelled field, a day outside 1 to 31, a negative amount) shows "Bills unavailable" on the display and logs the exact problem once.
-- The widget shows as many whole cards as fit, soonest due first.
+- The widget shows as many whole cards as fit.
 - You can edit the file by hand or from [Settings](#settings); both change the same file.
 
 ## Settings
 
 The gear beside the location opens Settings as a full screen over the dashboard, which keeps updating underneath. It has two sections for now:
 
-- **Bills**: add, edit and delete bills. Each bill has a name, an amount, a due day (a stepper, so nothing needs typing) and an autopay switch. A change is saved as one whole file, written atomically, and shows on the dashboard at once. If the bills file has a mistake in it, Settings shows what it is and lets you replace the file.
+- **Bills**: add, edit and delete bills, listed by the day of the month they fall due, with bills that share a day grouped together. Each bill has a name, an amount, a due day (a stepper, so nothing needs typing), and a circle to tick when it is paid. A change is saved as one whole file, written atomically, and shows on the dashboard at once. If the bills file has a mistake in it, Settings shows what it is and lets you replace the file.
 - **Appearance**: the theme.
 
 Done or Escape closes it, and it closes itself after 90 seconds without a touch, so it never stays open on the wall. It has an address (`http://127.0.0.1:5173/#/settings/bills`), so a section can be opened directly.
@@ -112,7 +115,7 @@ The MVP is a landscape-only display with one fixed layout and five widgets:
 | Month calendar | The current month, or only the current week when the widget is short |
 | Weather | Current conditions with a five-day forecast (today plus four days), low → high temperature ranges, an hourly view via the **Days / Hours** button, and any alert |
 | Up next | Your next calendar event |
-| Bills | Your recurring bills as cards, soonest due first, each with its amount, due date, and autopay status |
+| Bills | Your recurring bills as cards, what is left to pay first and what is already paid after, each with its amount and due date |
 
 Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Tap the settings gear beside **Dallas, TX** to open [Settings](#settings), where you can edit your bills and choose **Evergreen** or **Turquoise**. The theme applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
 
