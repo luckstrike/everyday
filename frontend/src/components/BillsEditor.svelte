@@ -256,6 +256,7 @@
       <div class="day-groups">
         {#each groups as group (group.day)}<section
             class="day-group"
+            class:shared={group.bills.length > 1}
             aria-label={`Bills due on day ${group.day}`}
           >
             <h4 class="day-label">{ordinal(group.day)}</h4>
@@ -308,8 +309,12 @@
      Done button, so its header action lines up with it. */
   .bills-editor {
     /* One height for a bill row and for the date beside it, so the date is centred
-       on its first bill however the text inside wraps. */
+       on its first bill however the text inside wraps; one gap between bills. */
+    --bill-gap: 12px;
     --bill-row-height: 66px;
+    /* The date column and the gap after it. */
+    --date-col: 3rem;
+    --date-gap: 16px;
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -333,23 +338,57 @@
     line-height: 1.4;
   }
   /* Bills sit under the day of the month they fall due: the date down the left, the
-     bills due that day beside it. */
+     bills due that day beside it. Every bill is the same distance from the next,
+     inside a group or between groups, so the list reads as one rhythm and the dates
+     only label it. */
   .day-groups {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--bill-gap);
   }
   .day-group {
+    position: relative;
     display: grid;
-    grid-template-columns: 4.5rem minmax(0, 1fr);
-    gap: 16px;
+    grid-template-columns: var(--date-col) minmax(0, 1fr);
+    gap: var(--date-gap);
     align-items: start;
+  }
+  /* Bills that share a date are tied to it by a dotted line that drops out of the
+     bottom of the date, centred under it, and runs down to the last bill. The first
+     bill is already beside the date, so only the bills after it get a dot, each level
+     with the middle of its card. */
+  .day-group.shared {
+    --line-x: calc(var(--date-col) / 2);
+    --line-color: color-mix(in oklab, var(--muted) 55%, transparent);
+  }
+  .day-group.shared::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--line-x) - 1px);
+    /* Starts a little below the date's text, which is centred on the first row. */
+    top: calc(var(--bill-row-height) / 2 + 18px);
+    bottom: calc(var(--bill-row-height) / 2);
+    border-left: 2px dotted var(--line-color);
+  }
+  .day-group.shared .bill-card:not(:first-child)::before {
+    content: '';
+    position: absolute;
+    /* Measured from just inside the card's 1px border, which is a date column and a
+       gap in from the group's edge. */
+    left: calc(var(--line-x) - var(--date-col) - var(--date-gap) - 1px - 4px);
+    top: calc(50% - 4px);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
   }
   .day-label {
     margin: 0;
     height: var(--bill-row-height);
     display: flex;
     align-items: center;
+    /* Centred, so the dotted line drops from the middle of the date's bottom. */
+    justify-content: center;
     font-size: 18px;
     font-weight: 400;
     color: var(--muted);
@@ -361,11 +400,12 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--bill-gap);
   }
   /* A bill is a card like the Bills widget's: outlined, every other one filled. It
      holds the paid toggle and, beside it, the row that opens the bill for editing. */
   .bill-card {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -618,20 +658,29 @@
       margin-top: -4px;
     }
     .bills-editor {
+      --bill-gap: 8px;
       --bill-row-height: 58px;
-    }
-    .day-groups {
-      gap: 10px;
     }
   }
   /* Too narrow for a date column: the date heads its bills instead. */
   @media (max-width: 640px) {
+    /* With the date above its bills, a group needs air before the next date, or the
+       date would look like it belongs to the bills above it. */
+    .day-groups {
+      gap: calc(var(--bill-gap) + 8px);
+    }
+    /* The date is above its bills here, so there is no gap to run a line down. */
+    .day-group.shared::before,
+    .day-group.shared .bill-card::before {
+      display: none;
+    }
     .day-group {
       grid-template-columns: minmax(0, 1fr);
       gap: 4px;
     }
     .day-label {
       height: auto;
+      justify-content: flex-start;
       font-size: 16px;
     }
   }
