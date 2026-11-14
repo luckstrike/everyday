@@ -154,13 +154,24 @@ Optimize first for:
 4. reliable continuous operation
 5. eventual Raspberry Pi compatibility
 
+## Settings panel
+
+A settings panel is in scope, by the owner's instruction. It edits data, not layout:
+
+- Bills first, then calendars and location, alongside the existing theme choice.
+- The header keeps one settings gear. It opens Settings as a full screen with a left rail of sections and a Done button, and hands the screen back after a quiet spell. Do not add tabs or a Home button to the dashboard header.
+- It is built for touch on the wall display: large targets, steppers instead of typing where possible.
+- It is reachable by address (`#/settings/...`), so it can be opened from another device later.
+
+For now it is localhost-only and has no login. The endpoints that change things refuse requests that are not addressed to a loopback name, are not JSON, or name another origin. A login (Supabase has been mentioned) is deferred and needs explicit instruction; when it arrives it replaces those checks. Do not expose the server beyond localhost before then.
+
 ## Deferred (post-MVP)
 
 These were built in the prototype and removed for the MVP. The git tag `prototype-v0` preserves them; restore code from the tag rather than rewriting it.
 
 Do not reintroduce these without explicit instruction.
 
-- Widget and layout editing. Planned as an admin panel, not part of V1.
+- Widget and layout editing: moving or resizing widgets. The settings panel (see above) does not do this.
 - Multiple named boards, and portrait layouts.
 - Sports and Around Dallas widgets. Planned for V1+ or V2.
 - Priority engine and attention system. When it returns, keep it deterministic and testable, outside Svelte components, and support:

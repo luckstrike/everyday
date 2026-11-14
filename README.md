@@ -89,6 +89,18 @@ Bills are typed in, not fetched: there is no bank or budgeting-app connection, a
 - `amount` is the usual amount and `autopay` defaults to false. Both are shown on the card as written. A bill whose amount changes each month shows its usual figure.
 - The file is re-read whenever it changes, so edits appear within a few seconds with no restart. Leaving the file out shows "No bills yet". A mistake in it (a misspelled field, a day outside 1 to 31, a negative amount) shows "Bills unavailable" on the display and logs the exact problem once.
 - The widget shows as many whole cards as fit, soonest due first.
+- You can edit the file by hand or from [Settings](#settings); both change the same file.
+
+## Settings
+
+The gear beside the location opens Settings as a full screen over the dashboard, which keeps updating underneath. It has two sections for now:
+
+- **Bills**: add, edit and delete bills. Each bill has a name, an amount, a due day (a stepper, so nothing needs typing) and an autopay switch. A change is saved as one whole file, written atomically, and shows on the dashboard at once. If the bills file has a mistake in it, Settings shows what it is and lets you replace the file.
+- **Appearance**: the theme.
+
+Done or Escape closes it, and it closes itself after 90 seconds without a touch, so it never stays open on the wall. It has an address (`http://127.0.0.1:5173/#/settings/bills`), so a section can be opened directly.
+
+There is no login yet, so Settings only works from the machine the dashboard runs on. The endpoints that change things (`PUT /api/bills`) reject a request unless it is addressed to `localhost`, `127.0.0.1` or `::1`, is JSON, and either names no origin or names this server. That keeps another web page in your browser from editing your bills, and it keeps the dashboard from being edited from elsewhere on your network by accident. If you put a reverse proxy in front of the server, it must pass the original `Host` header through. A real login is planned and will replace these checks.
 
 ## What it shows
 
@@ -102,7 +114,7 @@ The MVP is a landscape-only display with one fixed layout and five widgets:
 | Up next | Your next calendar event |
 | Bills | Your recurring bills as cards, soonest due first, each with its amount, due date, and autopay status |
 
-Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Use the settings icon beside **Dallas, TX** to choose **Evergreen** or **Turquoise**. The choice applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
+Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Tap the settings gear beside **Dallas, TX** to open [Settings](#settings), where you can edit your bills and choose **Evergreen** or **Turquoise**. The theme applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
 
 ## Architecture
 
@@ -117,7 +129,8 @@ Widgets receive props and never fetch APIs. Go owns the mock source data. The fr
 | --- | --- |
 | `backend/internal/domain` | Normalized data models |
 | `backend/internal/weather` | Open-Meteo client and the cache that keeps the last good forecast |
-| `backend/internal/bills` | The bills file, and when each bill is next due |
+| `backend/internal/bills` | The bills file: reading it, saving it, and when each bill is next due |
+| `backend/internal/fileutil` | Writing a file so a half-written one is never seen |
 | `backend/internal/gcal` | Google OAuth sign-in, the Calendar client, and the event cache |
 | `backend/cmd/googleauth` | The one-time `make google-auth` sign-in command |
 | `backend/internal/mock` | Independent mock sources, used only with `EVERYDAY_MOCK` |
@@ -126,12 +139,14 @@ Widgets receive props and never fetch APIs. Go owns the mock source data. The fr
 | `frontend/src/App.svelte` | Polling lifecycle, theme, header and footer |
 | `frontend/src/lib/layout.ts` | The fixed layout and grid helpers |
 | `frontend/src/lib/month.ts` | Month grid and current-week calculation |
-| `frontend/src/components` | The grid, widgets, theme settings, toast |
+| `frontend/src/components` | The grid, widgets, the settings panel, toast |
 
 | Method | Path | Result |
 | --- | --- | --- |
 | GET | `/api/state` | Normalized state, with a `sources` status (`live`, `mock`, `unavailable`, `unconfigured`) for each section |
 | GET | `/api/config` | Polling interval |
+| GET | `/api/bills` | The bills as written in the file, in file order, plus a `problem` if the file cannot be read |
+| PUT | `/api/bills` | Replaces the bills, with the new list returned. Invalid bills get a 400 that says why. |
 
 Polling uses a five-second interval with an eight-second timeout and never overlaps requests. Timers clean up on unmount. The last successful state remains visible during outages; the footer reports delay or connection failure. The backend contacts Open-Meteo every 15 minutes (retrying after a minute on failure), not on each poll. A failed refresh keeps the last forecast, which is dropped after an hour so stale weather is never shown as current. Google Calendar is read every 5 minutes (retrying after a minute on failure), and its events are dropped after 30 minutes without a successful refresh. In mock mode, dates are anchored to backend startup rather than advancing on each poll.
 
@@ -154,9 +169,9 @@ For a local production preview, run the backend, build the frontend, and run `np
 
 Removed from the prototype and preserved in the git tag `prototype-v0`:
 
-- Widget and layout editing, planned as an admin panel
+- Widget and layout editing (moving and resizing widgets)
 - Multiple named boards and portrait layouts
 - Sports and Around Dallas widgets (V1+ or V2)
 - The priority and attention system
 
-An edit panel in the UI (for bills, calendars and location), iCloud calendars (Google only for now), and Raspberry Pi deployment also remain future work.
+Editing calendars and location in Settings, a login so Settings can be used from other devices, iCloud calendars (Google only for now), and Raspberry Pi deployment also remain future work.
