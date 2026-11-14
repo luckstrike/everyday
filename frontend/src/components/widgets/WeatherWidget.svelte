@@ -239,6 +239,12 @@
     visibility: hidden;
     pointer-events: none;
   }
+  /* Each card sets its own visibility inline (to hide the days that do not fit across),
+     and a child's own setting beats its parent's. Without this, "hidden" cards that
+     fit across would still be drawn, on top of the current conditions. */
+  .forecast-strip.forecast-hidden .forecast-day {
+    visibility: hidden !important;
+  }
   .forecast-day {
     flex: 1 0 auto;
     min-width: 0;
