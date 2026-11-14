@@ -1,7 +1,7 @@
 // Which screen is showing. The dashboard is the default; settings opens over it and
 // lives at an address (#/settings/bills) so it can be opened directly later, from
 // another device. A plain hash needs no router.
-export type Section = 'bills' | 'appearance';
+export type Section = 'bills' | 'appearance' | 'location';
 export type View =
   { name: 'dashboard' } | { name: 'settings'; section: Section };
 
@@ -9,6 +9,7 @@ export type View =
 export const sections: { id: Section; label: string }[] = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'bills', label: 'Bills' },
+  { id: 'location', label: 'Location' },
 ];
 
 // Bills is what the gear opens, and what a bare or unknown address falls back to,

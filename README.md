@@ -46,6 +46,10 @@ Settings come from three places; later ones win: built-in defaults, then the con
 
 Invalid settings stop the server at startup with a message naming the problem.
 
+To change weather location without a restart, tap the location name on the dashboard or open **Settings → Location** (`#/settings/location`). Search for a city or postal code, select the result with the right region/country, then save. The backend uses Open-Meteo's geocoding API (location data from GeoNames), which needs no API key for this non-commercial dashboard. The selected name and coordinates are written atomically to the config file, preserving Google settings, and weather reloads immediately. Old-location forecasts are cleared, including late responses from in-flight requests. A lookup failure leaves the saved location unchanged; a failed forecast is retried automatically. This setting changes weather only, not the clock or calendar timezone.
+
+Environment variables retain priority: when the location variables are set, Location explains that they must be removed and the server restarted before editing here. Location editing is disabled in mock mode. Editing the config file by hand still requires restarting the server to load the change.
+
 ## Connect Google Calendar
 
 The backend reads your calendar through Google's API, and the browser never sees any credentials. Setup is a one-time job in Google's console plus one sign-in:
@@ -97,14 +101,15 @@ Bills are typed in, not fetched: there is no bank or budgeting-app connection, a
 
 ## Settings
 
-The gear beside the location opens Settings as a full screen over the dashboard, which keeps updating underneath. It has two sections for now:
+The gear beside the location opens Settings as a full screen over the dashboard, which keeps updating underneath. Tap the location name to open Location directly. It has three sections:
 
 - **Bills**: add, edit and delete bills, listed by the day of the month they fall due, with bills that share a day grouped together. Each bill has a name, an amount (or an "Amount varies" switch, for a card with no fixed amount), a due day (a stepper, so nothing needs typing), and a circle to tick when it is paid. A change is saved as one whole file, written atomically, and shows on the dashboard at once. If the bills file has a mistake in it, Settings shows what it is and lets you replace the file.
 - **Appearance**: the theme.
+- **Location**: search for a city or postal code, choose a matching region/country, then save the weather location. Search happens on submission, not on every keystroke.
 
 Done or Escape closes it, and it closes itself after 90 seconds without a touch, so it never stays open on the wall. It has an address (`http://127.0.0.1:5173/#/settings/bills`), so a section can be opened directly.
 
-There is no login yet, so Settings only works from the machine the dashboard runs on. The endpoints that change things (`PUT /api/bills`) reject a request unless it is addressed to `localhost`, `127.0.0.1` or `::1`, is JSON, and either names no origin or names this server. That keeps another web page in your browser from editing your bills, and it keeps the dashboard from being edited from elsewhere on your network by accident. If you put a reverse proxy in front of the server, it must pass the original `Host` header through. A real login is planned and will replace these checks.
+There is no login yet, so Settings only works from the machine the dashboard runs on. The endpoints that change things (`PUT /api/bills`, `PUT /api/location`) reject a request unless it is addressed to `localhost`, `127.0.0.1` or `::1`, is JSON, and either names no origin or names this server. That keeps another web page in your browser from editing your bills, and it keeps the dashboard from being edited from elsewhere on your network by accident. If you put a reverse proxy in front of the server, it must pass the original `Host` header through. A real login is planned and will replace these checks.
 
 ## What it shows
 
@@ -118,7 +123,7 @@ The MVP is a landscape-only display with one fixed layout and five widgets:
 | Up next | Your next calendar event |
 | Bills | Your recurring bills as cards: overdue first, then what is left to pay, then what is already paid, each with its amount and due date |
 
-Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Tap the settings gear beside **Dallas, TX** to open [Settings](#settings), where you can edit your bills and choose a colour theme: **Amber**, **Evergreen**, **Graphite**, **Indigo**, **Ocean**, **Plum**, **Stone** or **Turquoise**. The theme applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
+Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Tap the settings gear beside **Dallas, TX** to open [Settings](#settings), where you can edit your bills, choose a weather location, and choose a colour theme: **Amber**, **Evergreen**, **Graphite**, **Indigo**, **Ocean**, **Plum**, **Stone** or **Turquoise**. The theme applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
 
 ## Architecture
 
@@ -151,10 +156,13 @@ Widgets receive props and never fetch APIs. Go owns the mock source data. The fr
 | GET | `/api/config` | Polling interval |
 | GET | `/api/bills` | The bills as written in the file, in file order, plus a `problem` if the file cannot be read |
 | PUT | `/api/bills` | Replaces the bills, with the new list returned. Invalid bills get a 400 that says why. |
+| GET | `/api/location` | Saved weather location, whether it is editable, and why not if locked |
+| GET | `/api/locations?q=…` | Up to eight matching city/postal-code locations with coordinates, through Open-Meteo |
+| PUT | `/api/location` | Saves a name, latitude and longitude; returns saved settings and starts a weather refresh |
 
-Polling uses a five-second interval with an eight-second timeout and never overlaps requests. Timers clean up on unmount. The last successful state remains visible during outages; the footer reports delay or connection failure. The backend contacts Open-Meteo every 15 minutes (retrying after a minute on failure), not on each poll. A failed refresh keeps the last forecast, which is dropped after an hour so stale weather is never shown as current. Google Calendar is read every 5 minutes (retrying after a minute on failure), and its events are dropped after 30 minutes without a successful refresh. In mock mode, dates are anchored to backend startup rather than advancing on each poll.
+Polling uses a five-second interval with an eight-second timeout. Saves request an immediate refresh; any older in-flight response is ignored. Timers clean up on unmount. The last successful state remains visible during outages; the footer reports delay or connection failure. The backend contacts Open-Meteo every 15 minutes (retrying after a minute on failure), not on each poll. A failed refresh keeps the last forecast, which is dropped after an hour so stale weather is never shown as current. Google Calendar is read every 5 minutes (retrying after a minute on failure), and its events are dropped after 30 minutes without a successful refresh. In mock mode, dates are anchored to backend startup rather than advancing on each poll.
 
-Svelte is the only frontend runtime dependency. Go uses its standard library. No layout libraries, network fonts, databases, or cloud services are used.
+Svelte is the only frontend runtime dependency. Go uses its standard library. No layout libraries, network fonts, databases, or cloud hosting are used. Weather and city search use Open-Meteo through the backend.
 
 ## Verification
 
@@ -178,4 +186,4 @@ Removed from the prototype and preserved in the git tag `prototype-v0`:
 - Sports and Around Dallas widgets (V1+ or V2)
 - The priority and attention system
 
-Editing calendars and location in Settings, a login so Settings can be used from other devices, iCloud calendars (Google only for now), and Raspberry Pi deployment also remain future work.
+Editing calendars in Settings, a login so Settings can be used from other devices, iCloud calendars (Google only for now), and Raspberry Pi deployment also remain future work.

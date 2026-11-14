@@ -37,6 +37,10 @@ test('settings opens on Bills unless a known section is named', () => {
     name: 'settings',
     section: 'bills',
   });
+  assert.deepEqual(parseHash('#/settings/location'), {
+    name: 'settings',
+    section: 'location',
+  });
 });
 test('an address always reads back as the screen it was made from', () => {
   assert.equal(hashFor({ name: 'dashboard' }), '');

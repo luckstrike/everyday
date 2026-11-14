@@ -35,7 +35,7 @@ Prioritize distance legibility and clear contrast on a small wall display. The t
 
 ## Implementation Scope
 
-The MVP is a landscape-only display with five widgets: Clock, Month calendar, Weather, Up next, and Bills. Weather is live from Open-Meteo and served, with everything else, by the Go REST API. Calendar reads from Google Calendar once connected; bills are a recurring list kept in a local file and edited from a settings panel on the display itself. Mock data is available as an opt-in for development.
+The MVP is a landscape-only display with five widgets: Clock, Month calendar, Weather, Up next, and Bills. Weather is live from Open-Meteo and served, with everything else, by the Go REST API. Calendar reads from Google Calendar once connected; bills are a recurring list kept in a local file and edited from a settings panel on the display itself. Weather location is searchable and saved from Settings, also reached by tapping the dashboard location. Mock data is available as an opt-in for development.
 
 Deferred to later versions, and preserved in the git tag `prototype-v0`:
 
@@ -43,6 +43,6 @@ Deferred to later versions, and preserved in the git tag `prototype-v0`:
 - Multiple named boards and portrait layouts.
 - Sports and Around Dallas widgets.
 - The priority and attention system, including emphasis and fullscreen takeovers.
-- Editing calendars and location in the settings panel, and a login for it.
+- Editing calendars in the settings panel, and a login for it.
 - iCloud calendars.
 - Raspberry Pi deployment.

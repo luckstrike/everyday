@@ -32,6 +32,7 @@ export interface DashboardState {
     calendar: SourceStatus;
   };
   weather: {
+    loading?: boolean;
     location: string;
     temperature: number;
     condition: string;

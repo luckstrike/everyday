@@ -34,6 +34,7 @@ const panel = (section: string, theme = 'evergreen') =>
       onclose: noop,
       onchoosetheme: noop,
       onbillschanged: noop,
+      onlocationchanged: noop,
     },
   }).body;
 
@@ -45,12 +46,14 @@ test('settings is a dialog with a heading, a Done button and every section on it
   assert.match(body, /aria-label="Settings sections"/);
   assert.match(body, />Bills</);
   assert.match(body, />Appearance</);
+  assert.match(body, />Location</);
 });
 
 test('the rail marks the section that is showing, and only that one', () => {
   for (const [section, label, other] of [
     ['bills', 'Bills', 'Appearance'],
     ['appearance', 'Appearance', 'Bills'],
+    ['location', 'Location', 'Appearance'],
   ]) {
     const body = panel(section);
     assert.match(body, new RegExp(`aria-current="page"[^>]*>${label}<`));
@@ -63,6 +66,12 @@ test('the bills section starts by saying it is loading, before anything is shown
   const body = panel('bills');
   assert.match(body, /Loading your bills/);
   assert.doesNotMatch(body, /class="bill-form"|Add bill/);
+});
+
+test('the location section loads the saved location before offering changes', () => {
+  const body = panel('location');
+  assert.match(body, /Loading your location/);
+  assert.doesNotMatch(body, /City or postal code|Save location/);
 });
 
 test('the appearance section offers every theme and marks only the current one', () => {
@@ -85,6 +94,7 @@ test('every section opens with the same header: a title, what it is for, and a r
   for (const [section, title, description] of [
     ['bills', 'Bills', 'Each bill repeats every month'],
     ['appearance', 'Appearance', 'A color for your space'],
+    ['location', 'Location', 'Choose the city for your weather forecast'],
   ]) {
     const body = panel(section);
     assert.match(body, /class="settings-header/);

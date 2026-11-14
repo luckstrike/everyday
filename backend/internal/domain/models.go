@@ -33,6 +33,7 @@ type ForecastDay struct {
 	Precipitation int         `json:"precipitation"`
 }
 type Weather struct {
+	Loading       bool          `json:"loading,omitempty"`
 	Daily         []ForecastDay `json:"daily"`
 	Location      string        `json:"location"`
 	Temperature   int           `json:"temperature"`

@@ -31,8 +31,12 @@ func main() {
 		log.Printf("Serving mock data (EVERYDAY_MOCK is set)")
 	} else {
 		service := weather.NewService(&weather.Client{Location: cfg.Location})
+		service.SetLocation(cfg.Location)
 		go service.Run(ctx)
 		opts.Weather = service
+		opts.LocationStore = config.NewLocationStore(os.Getenv, config.DefaultFile(), cfg.Location)
+		opts.LocationSearch = &weather.Geocoder{}
+		opts.OnLocationChanged = service.SetLocation
 		log.Printf("Serving live weather for %s", cfg.Location.Name)
 		if calendar := connectGoogleCalendar(ctx, cfg); calendar != nil {
 			opts.Calendar = calendar

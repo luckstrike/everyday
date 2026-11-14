@@ -44,3 +44,25 @@ export const saveBills = (bills: BillEntry[]) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ bills }),
   });
+
+export interface WeatherLocation {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+export interface LocationResponse {
+  location: WeatherLocation;
+  editable: boolean;
+  reason?: string;
+}
+export const getLocation = () => request<LocationResponse>('location');
+export const searchLocations = (query: string) =>
+  request<{ locations: WeatherLocation[] }>(
+    `locations?q=${encodeURIComponent(query)}`,
+  );
+export const saveLocation = (location: WeatherLocation) =>
+  request<LocationResponse>('location', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(location),
+  });

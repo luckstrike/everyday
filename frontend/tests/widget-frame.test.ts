@@ -156,6 +156,33 @@ test('an explicit null message displays normal content', () => {
   assert.doesNotMatch(body, /has-message/);
 });
 
+test('weather distinguishes a new location loading from a failed fetch and hides previous temperatures', async () => {
+  const { default: WeatherWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/WeatherWidget.svelte',
+  );
+  for (const loading of [true, false]) {
+    const { body } = render(WeatherWidget, {
+      props: {
+        data: {
+          location: 'Austin, Texas, United States',
+          loading,
+          temperature: 99,
+          daily: [],
+          hourly: [],
+        },
+        status: 'unavailable',
+        size: 'medium',
+      },
+    });
+    assert.ok(
+      body.includes(loading ? 'Loading weather' : 'Weather unavailable'),
+    );
+    assert.ok(body.includes('Austin, Texas, United States'));
+    assert.doesNotMatch(body, /99°|class="temperature/);
+    if (!loading) assert.match(body, /Retrying automatically/);
+  }
+});
+
 for (const widget of [
   {
     name: 'Bills',

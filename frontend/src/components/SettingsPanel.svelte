@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import AppearanceSettings from './AppearanceSettings.svelte';
   import BillsEditor from './BillsEditor.svelte';
+  import LocationSettings from './LocationSettings.svelte';
+  import type { WeatherLocation } from '../lib/api.ts';
   import { idleTimer } from '../lib/idle.ts';
   import { sections, type Section } from '../lib/route.ts';
   import type { Theme } from '../lib/theme.ts';
@@ -13,6 +15,7 @@
     onclose,
     onchoosetheme,
     onbillschanged,
+    onlocationchanged,
   }: {
     section: Section;
     theme: Theme;
@@ -20,6 +23,7 @@
     onclose: () => void;
     onchoosetheme: (theme: Theme) => void;
     onbillschanged: () => void;
+    onlocationchanged: (location: WeatherLocation) => void;
   } = $props();
 
   // This is a wall display. Settings opens on purpose, but nobody should have to
@@ -67,6 +71,8 @@
     <section class="panel-content">
       {#if section === 'bills'}
         <BillsEditor onchanged={onbillschanged} />
+      {:else if section === 'location'}
+        <LocationSettings onchanged={onlocationchanged} />
       {:else}
         <AppearanceSettings {theme} onchange={onchoosetheme} />
       {/if}
@@ -156,6 +162,8 @@
     .rail button {
       flex: 1;
       justify-content: center;
+      min-width: 0;
+      padding-inline: 8px;
     }
   }
 </style>

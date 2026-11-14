@@ -24,7 +24,16 @@
   // Whether the forecast, and the switch that chooses between days and hours, fit
   // whole beneath the current conditions. Measured, never guessed from a height.
   let forecastFits = $state(true);
-  const notice = $derived(sourceNotice(status, 'Weather'));
+  const notice = $derived(
+    status === 'unavailable' && data.loading
+      ? {
+          title: 'Loading weather',
+          detail: `Fetching the forecast for ${data.location}…`,
+        }
+      : sourceNotice(status, 'Weather', {
+          unavailableDetail: `Could not load weather for ${data.location}. Retrying automatically.`,
+        }),
+  );
 
   $effect(() => {
     const strip = dailyStrip;

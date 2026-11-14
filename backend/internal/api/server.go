@@ -1,18 +1,23 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
 	"mime"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"everyday/backend/internal/bills"
 	"everyday/backend/internal/domain"
 	"everyday/backend/internal/mock"
+	"everyday/backend/internal/weather"
 )
 
 // maxEditBody caps what the editing endpoints will read. A bills list is a few
@@ -43,6 +48,15 @@ type FinanceSource interface {
 	Bills(now time.Time) ([]domain.Bill, domain.SourceStatus)
 }
 
+type LocationStore interface {
+	Location() (weather.Location, string)
+	Save(weather.Location) error
+}
+
+type LocationSearch interface {
+	Search(context.Context, string) ([]weather.Location, error)
+}
+
 type Options struct {
 	// Mock serves made-up development data and ignores the other fields.
 	Mock bool
@@ -56,20 +70,27 @@ type Options struct {
 	Finance FinanceSource
 	// BillsStore is what the settings panel edits. Nil, as in mock mode, means bills
 	// cannot be edited and the editing endpoints say so.
-	BillsStore BillsStore
+	BillsStore        BillsStore
+	LocationStore     LocationStore
+	LocationSearch    LocationSearch
+	OnLocationChanged func(weather.Location)
 }
 
 type Server struct {
-	opts   Options
-	anchor time.Time
+	opts       Options
+	anchor     time.Time
+	locationMu sync.Mutex
 }
 
 func New(opts Options) http.Handler {
 	s := &Server{opts: opts, anchor: time.Now()}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/state", s.state)
-	mux.HandleFunc("GET /api/bills", s.editing(s.getBills))
-	mux.HandleFunc("PUT /api/bills", s.editing(s.putBills))
+	mux.HandleFunc("GET /api/bills", s.editing(s.opts.BillsStore != nil, s.getBills))
+	mux.HandleFunc("PUT /api/bills", s.editing(s.opts.BillsStore != nil, s.putBills))
+	mux.HandleFunc("GET /api/location", s.editing(true, s.getLocation))
+	mux.HandleFunc("PUT /api/location", s.editing(s.opts.LocationStore != nil && s.opts.OnLocationChanged != nil, s.putLocation))
+	mux.HandleFunc("GET /api/locations", s.editing(s.opts.LocationSearch != nil, s.searchLocations))
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) { respond(w, domain.Configuration()) })
 	return mux
 }
@@ -97,10 +118,10 @@ func respondError(w http.ResponseWriter, status int, message string) {
 //   - a request that names its origin must name this server.
 //
 // When real authentication arrives it replaces these, not the other way round.
-func (s *Server) editing(next http.HandlerFunc) http.HandlerFunc {
+func (s *Server) editing(available bool, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.opts.BillsStore == nil {
-			respondError(w, http.StatusNotFound, "bills cannot be edited here")
+		if !available {
+			respondError(w, http.StatusNotFound, "these settings cannot be edited here")
 			return
 		}
 		if !loopbackHost(r.Host) {
@@ -119,6 +140,84 @@ func (s *Server) editing(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+type locationBody struct {
+	Location weather.Location `json:"location"`
+	Editable bool             `json:"editable"`
+	Reason   string           `json:"reason,omitempty"`
+}
+
+func (s *Server) getLocation(w http.ResponseWriter, r *http.Request) {
+	if s.opts.LocationStore == nil {
+		respond(w, locationBody{Location: weather.Location{Name: s.opts.Location}, Reason: "Location cannot be edited while sample data is showing."})
+		return
+	}
+	location, reason := s.opts.LocationStore.Location()
+	respond(w, locationBody{Location: location, Editable: reason == "" && s.opts.OnLocationChanged != nil, Reason: reason})
+}
+
+func (s *Server) searchLocations(w http.ResponseWriter, r *http.Request) {
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if length := utf8.RuneCountInString(query); length < 2 || length > 100 {
+		respondError(w, http.StatusBadRequest, "enter between 2 and 100 characters to search")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	locations, err := s.opts.LocationSearch.Search(ctx, query)
+	if err != nil {
+		log.Printf("location search: %v", err)
+		respondError(w, http.StatusBadGateway, "City search is unavailable. Please try again.")
+		return
+	}
+	if locations == nil {
+		locations = []weather.Location{}
+	}
+	respond(w, map[string]any{"locations": locations})
+}
+
+func (s *Server) putLocation(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxEditBody)
+	var body struct {
+		Name      string   `json:"name"`
+		Latitude  *float64 `json:"latitude"`
+		Longitude *float64 `json:"longitude"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&body); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			respondError(w, http.StatusRequestEntityTooLarge, "that is too much to save")
+		} else {
+			respondError(w, http.StatusBadRequest, "could not read the location")
+		}
+		return
+	}
+	var extra any
+	if decoder.Decode(&extra) != io.EOF || body.Latitude == nil || body.Longitude == nil {
+		respondError(w, http.StatusBadRequest, "choose a location with valid coordinates")
+		return
+	}
+	location := weather.Location{Name: strings.TrimSpace(body.Name), Latitude: *body.Latitude, Longitude: *body.Longitude}
+	if err := location.Validate(); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	s.locationMu.Lock()
+	defer s.locationMu.Unlock()
+	if _, reason := s.opts.LocationStore.Location(); reason != "" {
+		respondError(w, http.StatusConflict, reason)
+		return
+	}
+	if err := s.opts.LocationStore.Save(location); err != nil {
+		log.Printf("saving location: %v", err)
+		respondError(w, http.StatusInternalServerError, "The location could not be saved. Your previous location is unchanged.")
+		return
+	}
+	s.opts.OnLocationChanged(location)
+	s.getLocation(w, r)
 }
 
 // loopbackHost reports whether a Host header names this machine itself.
@@ -199,6 +298,9 @@ func (s *Server) build(now time.Time) domain.State {
 		if weather, ok := s.opts.Weather.Current(now); ok {
 			state.Weather = weather
 			state.Sources.Weather = domain.SourceLive
+		} else if weather.Location != "" {
+			state.Weather.Location = weather.Location
+			state.Weather.Loading = weather.Loading
 		}
 	}
 	if s.opts.Calendar != nil {

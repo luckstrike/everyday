@@ -12,7 +12,7 @@
     type View,
   } from './lib/route.ts';
   import { loadTheme, THEME_KEY, type Theme } from './lib/theme.ts';
-  import { getConfig, getState } from './lib/api.ts';
+  import { getConfig, getState, type WeatherLocation } from './lib/api.ts';
   import type { Config, DashboardState } from './lib/types.ts';
   let dashboard = $state<DashboardState | null>(null),
     config = $state<Config | null>(null);
@@ -25,6 +25,12 @@
   // The dashboard is home. Settings opens over it, and keeps polling underneath.
   let view = $state<View>(parseHash(location.hash));
   let settingsButton = $state<HTMLButtonElement>();
+  let returnFocus: HTMLButtonElement | undefined;
+  let refreshVersion = 0;
+  function openSettings(section: Section, button: HTMLButtonElement) {
+    returnFocus = button;
+    navigate({ name: 'settings', section });
+  }
   function navigate(next: View) {
     if (next.name === 'dashboard') {
       history.pushState(null, '', location.pathname + location.search);
@@ -35,7 +41,7 @@
   }
   function closeSettings() {
     navigate({ name: 'dashboard' });
-    settingsButton?.focus();
+    (returnFocus ?? settingsButton)?.focus();
   }
   $effect(() => {
     document.documentElement.dataset.theme = theme;
@@ -54,14 +60,34 @@
   }
   const stale = $derived(lastSuccess > 0 && now - lastSuccess > 15000);
   async function refresh() {
+    const version = ++refreshVersion;
     try {
       if (!config) config = await getConfig();
-      dashboard = await getState();
+      const next = await getState();
+      if (version !== refreshVersion) return;
+      dashboard = next;
       lastSuccess = Date.now();
       error = '';
     } catch {
+      if (version !== refreshVersion) return;
       error = 'Connection interrupted. Retrying automatically.';
     }
+  }
+  function locationChanged(location: WeatherLocation) {
+    if (dashboard) {
+      dashboard = {
+        ...dashboard,
+        sources: { ...dashboard.sources, weather: 'unavailable' },
+        weather: {
+          ...dashboard.weather,
+          location: location.name,
+          loading: true,
+          daily: [],
+          hourly: [],
+        },
+      };
+    }
+    void refresh();
   }
   onMount(() => {
     let stopped = false,
@@ -87,13 +113,17 @@
 <main>
   <header class="display-header">
     <div class="header-tools">
-      {#if dashboard}<span class="header-location"
-          ><Icon name="pin" size={16} />{dashboard.weather.location}</span
+      {#if dashboard}<button
+          class="header-location"
+          aria-label={`Change weather location, currently ${dashboard.weather.location}`}
+          onclick={(event) => openSettings('location', event.currentTarget)}
+          ><Icon name="pin" size={16} /><span>{dashboard.weather.location}</span
+          ></button
         >{/if}<button
         bind:this={settingsButton}
         class="icon-button settings-trigger"
         aria-label="Settings"
-        onclick={() => navigate({ name: 'settings', section: defaultSection })}
+        onclick={(event) => openSettings(defaultSection, event.currentTarget)}
         ><Icon name="settings" size={20} /></button
       >
     </div>
@@ -123,6 +153,7 @@
       onclose={closeSettings}
       onchoosetheme={chooseTheme}
       onbillschanged={refresh}
+      onlocationchanged={locationChanged}
     />{/if}
   <Toast message={notice} token={noticeToken} ondismiss={() => (notice = '')} />
 </main>

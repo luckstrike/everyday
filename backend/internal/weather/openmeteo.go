@@ -24,9 +24,9 @@ const (
 
 // Location is where the forecast is for. Name is only a display label.
 type Location struct {
-	Name      string
-	Latitude  float64
-	Longitude float64
+	Name      string  `json:"name"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
 // Client fetches the forecast for one location from Open-Meteo.
