@@ -3,7 +3,8 @@
 // form. The backend still has the last word, and its message is shown if it differs.
 export interface BillEntry {
   name: string;
-  amount: number;
+  // Left out when the bill has no fixed amount, such as a credit card.
+  amount?: number;
   day: number;
   // The due date (YYYY-MM-DD) this bill was last marked paid for. It only counts
   // while it is the due date the bill is currently counting toward, so a tick clears
@@ -32,11 +33,8 @@ export interface ListedBill extends BillEntry {
 // What is saved for a bill: only what belongs in the file, not the dates worked out
 // for display.
 export function toEntry(bill: ListedBill): BillEntry {
-  const entry: BillEntry = {
-    name: bill.name,
-    amount: bill.amount,
-    day: bill.day,
-  };
+  const entry: BillEntry = { name: bill.name, day: bill.day };
+  if (bill.amount) entry.amount = bill.amount;
   if (bill.paidFor) entry.paidFor = bill.paidFor;
   if (bill.addedOn) entry.addedOn = bill.addedOn;
   return entry;
@@ -59,18 +57,22 @@ export function withPaid(bill: ListedBill, paid: boolean): BillEntry {
 export interface BillDraft {
   name: string;
   amount: string;
+  // The bill has no fixed amount, so the amount is ignored.
+  varies: boolean;
   day: number;
 }
 
 export const emptyDraft = (): BillDraft => ({
   name: '',
   amount: '',
+  varies: false,
   day: 1,
 });
 
 export const draftFrom = (entry: BillEntry): BillDraft => ({
   name: entry.name,
-  amount: entry.amount.toFixed(2),
+  amount: entry.amount ? entry.amount.toFixed(2) : '',
+  varies: !entry.amount,
   day: entry.day,
 });
 
@@ -86,7 +88,7 @@ export function parseAmount(text: string): number | null {
 // A message to show when the draft cannot be saved, or null when it can.
 export function validateDraft(draft: BillDraft): string | null {
   if (draft.name.trim() === '') return 'Give the bill a name.';
-  if (parseAmount(draft.amount) === null)
+  if (!draft.varies && parseAmount(draft.amount) === null)
     return 'Enter the amount as a number, like 84.50.';
   if (!Number.isInteger(draft.day) || draft.day < 1 || draft.day > 31)
     return 'Pick a day from 1 to 31.';
@@ -97,11 +99,9 @@ export function validateDraft(draft: BillDraft): string | null {
 // paid mark and added date carry over, so changing a name or amount does not un-pay
 // it or restart its tracking.
 export function entryFrom(draft: BillDraft, existing?: BillEntry): BillEntry {
-  const entry: BillEntry = {
-    name: draft.name.trim(),
-    amount: parseAmount(draft.amount) ?? 0,
-    day: draft.day,
-  };
+  const entry: BillEntry = { name: draft.name.trim(), day: draft.day };
+  const amount = draft.varies ? null : parseAmount(draft.amount);
+  if (amount) entry.amount = amount;
   if (existing?.paidFor) entry.paidFor = existing.paidFor;
   if (existing?.addedOn) entry.addedOn = existing.addedOn;
   return entry;

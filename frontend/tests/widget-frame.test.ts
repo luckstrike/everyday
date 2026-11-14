@@ -299,6 +299,40 @@ test('Bills puts missed bills first, says how late, and counts them in the heade
   assert.match(body, /2 overdue/);
 });
 
+test('Bills with no fixed amount say Due, and say nothing once paid', async () => {
+  const { default: FinanceWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/FinanceWidget.svelte',
+  );
+  const now = new Date(2026, 10, 14, 12).getTime();
+  const due = (date: number) => new Date(2026, 10, date).toISOString();
+  const bill = (name: string, dueAt: string, paid = false, amount = 0) => ({
+    name,
+    amount,
+    dueAt,
+    paid,
+    overdue: false,
+    daysLate: 0,
+  });
+  const { body } = render(FinanceWidget, {
+    props: {
+      data: {
+        bills: [
+          bill('Amex', due(20)),
+          bill('Visa', due(15), true),
+          bill('Rent', due(25), false, 1850),
+        ],
+      },
+      status: 'live',
+      size: 'medium',
+      now,
+    },
+  });
+  // Only the unpaid card with no amount says Due; the real amount is still quoted.
+  assert.equal(body.match(/>Due</g)?.length, 1);
+  assert.match(body, /\$1,850\.00/);
+  assert.doesNotMatch(body, /\$0\.00/);
+});
+
 test('Up next keeps all upcoming events available for measured fitting in date order', async () => {
   const { default: UpNextWidget } = await server.ssrLoadModule(
     '/src/components/widgets/UpNextWidget.svelte',

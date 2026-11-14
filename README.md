@@ -86,7 +86,7 @@ Bills are typed in, not fetched: there is no bank or budgeting-app connection, a
 ```
 
 - Every bill repeats monthly, on `day` (1 to 31). Today's date counts as still due. A bill due on the 29th, 30th or 31st falls on the last day of a shorter month.
-- `amount` is the usual amount, shown with cents. A bill whose amount changes each month shows its usual figure.
+- `amount` is the usual amount, shown with cents. Leave it out for a bill with no fixed amount, such as a credit card: its card says "Due" where the figure would be (and nothing once it is paid), and it is otherwise a bill like any other, including going overdue. An amount of 0 means the same as none.
 - A bill can be ticked as paid, from the circle beside it in [Settings](#settings). That saves `paidFor`, the due date it was paid for, and the bill counts as paid only while that is the due date it is showing, so the tick clears itself when the next month's bill comes round. Paying ahead works: tick it any time before the due date.
 - A bill whose due date passes unpaid becomes **overdue**. There is no queue behind this: it is worked out each time from the bill's day of the month, its `paidFor` date, and `addedOn`, the day it was first saved. The oldest missed due date at or after `addedOn` that is later than `paidFor` is the one shown, with how many days late it is. One card per bill, however many months were missed, and it stays until ticked (or the bill is deleted), when a single tick settles every missed month. A bill only starts being tracked from the day it was saved, so a new bill is never late for dates before it existed. Bills that were in the file before this existed have no `addedOn` and are not tracked until their next save from Settings.
 - On the dashboard, overdue bills come first (the longest overdue on top), then bills still to pay, soonest due, then the ones already paid, dimmed with a check and the word "Paid". An overdue bill replaces its next-due card rather than adding a second one, and a quiet "N overdue" count sits in the widget header. When space is short, what needs doing gets it.
@@ -99,7 +99,7 @@ Bills are typed in, not fetched: there is no bank or budgeting-app connection, a
 
 The gear beside the location opens Settings as a full screen over the dashboard, which keeps updating underneath. It has two sections for now:
 
-- **Bills**: add, edit and delete bills, listed by the day of the month they fall due, with bills that share a day grouped together. Each bill has a name, an amount, a due day (a stepper, so nothing needs typing), and a circle to tick when it is paid. A change is saved as one whole file, written atomically, and shows on the dashboard at once. If the bills file has a mistake in it, Settings shows what it is and lets you replace the file.
+- **Bills**: add, edit and delete bills, listed by the day of the month they fall due, with bills that share a day grouped together. Each bill has a name, an amount (or an "Amount varies" switch, for a card with no fixed amount), a due day (a stepper, so nothing needs typing), and a circle to tick when it is paid. A change is saved as one whole file, written atomically, and shows on the dashboard at once. If the bills file has a mistake in it, Settings shows what it is and lets you replace the file.
 - **Appearance**: the theme.
 
 Done or Escape closes it, and it closes itself after 90 seconds without a touch, so it never stays open on the wall. It has an address (`http://127.0.0.1:5173/#/settings/bills`), so a section can be opened directly.

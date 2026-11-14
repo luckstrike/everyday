@@ -670,3 +670,25 @@ func TestAHandWrittenFileStartsBeingTrackedOnlyOnceItIsSaved(t *testing.T) {
 		t.Fatalf("the 1st of December, missed: %+v", got[0])
 	}
 }
+
+func TestABillWithNoAmountIsKeptAsDueAndLeavesTheAmountOutOfTheFile(t *testing.T) {
+	// A credit card has no fixed amount: a file may leave it out, and it is valid.
+	entries, err := Parse([]byte(`{"bills": [{"name": "Amex", "day": 20}]}`))
+	if err != nil || len(entries) != 1 || entries[0].Amount != 0 {
+		t.Fatalf("parse: %+v, %v", entries, err)
+	}
+	got := Upcoming(entries, at(2026, 11, 14))
+	if len(got) != 1 || got[0].Amount != 0 || !got[0].DueAt.Equal(date(2026, 11, 20)) {
+		t.Fatalf("upcoming: %+v", got)
+	}
+
+	// Saving it must not write "amount": 0, so the file stays what a person would write.
+	path := filepath.Join(t.TempDir(), "bills.json")
+	if err := NewSource(path).Save(entries, saveTime); err != nil {
+		t.Fatal(err)
+	}
+	written, _ := os.ReadFile(path)
+	if strings.Contains(string(written), "amount") {
+		t.Fatalf("the file should not mention an amount: %s", written)
+	}
+}

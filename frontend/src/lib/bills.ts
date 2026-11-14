@@ -1,3 +1,5 @@
+import { money } from './format.ts';
+
 // The order bills are shown in: missed bills first, the longest overdue at the top; then
 // bills still to pay, soonest due; then bills already paid, in the same order. A display
 // with little room spends it on what needs doing. The backend sends them in this order;
@@ -11,6 +13,12 @@ export function orderBills<T extends Orderable>(bills: readonly T[]): T[] {
     (a, b) => rank(a) - rank(b) || Date.parse(a.dueAt) - Date.parse(b.dueAt),
   );
 }
+
+// What goes where a bill's amount would: the amount, or for a bill with no fixed
+// amount (a credit card) the word "Due". Once such a bill is paid there is nothing
+// left to say, so it shows nothing.
+export const amountText = (amount: number, paid: boolean) =>
+  amount > 0 ? money(amount) : paid ? '' : 'Due';
 
 export const overdueCount = (bills: readonly { overdue: boolean }[]) =>
   bills.filter((bill) => bill.overdue).length;

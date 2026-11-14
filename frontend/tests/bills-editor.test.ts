@@ -40,7 +40,7 @@ test('things that are not amounts are refused', () => {
   }
 });
 test('a draft can be saved only with a name, an amount and a real day', () => {
-  const good = { name: 'Rent', amount: '1850', day: 1 };
+  const good = { name: 'Rent', amount: '1850', varies: false, day: 1 };
   assert.equal(validateDraft(good), null);
   assert.match(validateDraft({ ...good, name: '   ' })!, /name/i);
   assert.match(validateDraft({ ...good, amount: '' })!, /amount/i);
@@ -57,11 +57,19 @@ test('a bill survives being turned into a draft and back', () => {
   assert.deepEqual(entryFrom(draftFrom(entry)), entry);
 });
 test('the entry sent to the backend is tidied', () => {
-  assert.deepEqual(entryFrom({ name: '  Rent  ', amount: '$1,850', day: 1 }), {
-    name: 'Rent',
-    amount: 1850,
-    day: 1,
-  });
+  assert.deepEqual(
+    entryFrom({
+      name: '  Rent  ',
+      amount: '$1,850',
+      varies: false,
+      day: 1,
+    }),
+    {
+      name: 'Rent',
+      amount: 1850,
+      day: 1,
+    },
+  );
 });
 test('due days read aloud correctly, including the teens', () => {
   const spoken = [1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 30, 31].map(ordinal);
@@ -220,19 +228,43 @@ test('editing a bill keeps it paid, so fixing a typo does not un-pay it', () => 
     paidFor: '2026-11-18',
   };
   const fixed = entryFrom(
-    { name: 'Electricity', amount: '84.50', day: 18 },
+    { name: 'Electricity', amount: '84.50', varies: false, day: 18 },
     existing,
   );
   assert.equal(fixed.paidFor, '2026-11-18');
   // ...and keeps the day it was added, so its overdue tracking does not restart.
   const added = entryFrom(
-    { name: 'Electricity', amount: '84.50', day: 18 },
+    { name: 'Electricity', amount: '84.50', varies: false, day: 18 },
     { ...existing, addedOn: '2026-11-01' },
   );
   assert.equal(added.addedOn, '2026-11-01');
   // A brand-new bill starts unpaid.
   assert.equal(
-    'paidFor' in entryFrom({ name: 'New', amount: '1', day: 1 }),
+    'paidFor' in entryFrom({ name: 'New', amount: '1', varies: false, day: 1 }),
     false,
   );
+});
+
+test('a bill with no fixed amount needs no amount typed', () => {
+  const card = { name: 'Amex', amount: '', varies: true, day: 5 };
+  assert.equal(validateDraft(card), null);
+  // Marking it as varying wins over whatever was typed before.
+  assert.deepEqual(entryFrom({ ...card, amount: '120' }), {
+    name: 'Amex',
+    day: 5,
+  });
+  // Without the switch a blank amount is still a mistake.
+  assert.match(validateDraft({ ...card, varies: false })!, /amount/i);
+});
+test('a bill with no amount opens with the switch on and comes back without one', () => {
+  const card = { name: 'Amex', day: 5 };
+  const draft = draftFrom(card);
+  assert.equal(draft.varies, true);
+  assert.equal(draft.amount, '');
+  assert.deepEqual(entryFrom(draft), card);
+  assert.equal(draftFrom({ name: 'Rent', amount: 1, day: 1 }).varies, false);
+});
+test('saving a bill with no amount leaves the amount out of the file', () => {
+  const entry = toEntry(listed({ amount: undefined }));
+  assert.equal('amount' in entry, false);
 });

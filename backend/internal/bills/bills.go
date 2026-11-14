@@ -24,8 +24,11 @@ import (
 
 // Entry is one bill as written in the file. Every bill repeats monthly.
 type Entry struct {
-	Name   string  `json:"name"`
-	Amount float64 `json:"amount"`
+	Name string `json:"name"`
+	// Amount is what the bill usually costs. Zero, which is also what a missing
+	// amount reads as, means it has no fixed amount, as with a credit card; the
+	// dashboard then says the bill is due without quoting a figure.
+	Amount float64 `json:"amount,omitempty"`
 	Day    int     `json:"day"` // day of the month it is due, 1 to 31
 	// PaidFor is the latest due date (YYYY-MM-DD) this bill has been marked paid for.
 	// Paying marks a due date paid, and every earlier one with it, so one tick clears

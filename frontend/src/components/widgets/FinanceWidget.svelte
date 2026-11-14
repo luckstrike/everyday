@@ -2,7 +2,12 @@
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import Icon from '../Icon.svelte';
   import { day, money } from '../../lib/format.ts';
-  import { daysLateText, orderBills, overdueCount } from '../../lib/bills.ts';
+  import {
+    amountText,
+    daysLateText,
+    orderBills,
+    overdueCount,
+  } from '../../lib/bills.ts';
   import { sourceNotice } from '../../lib/sources.ts';
   import { fittingItemCount } from '../../lib/fit.ts';
   import WidgetFrame from '../WidgetFrame.svelte';
@@ -92,9 +97,10 @@
           {#if bill.paid}<Icon
               name="check"
               size={16}
-            />{:else if bill.overdue}<Icon name="alert" size={16} />{/if}{money(
-            bill.amount,
-          )}
+            />{:else if bill.overdue}<Icon
+              name="alert"
+              size={16}
+            />{/if}{amountText(bill.amount, bill.paid)}
         </p>
       </li>{/each}
   </ol>

@@ -54,7 +54,7 @@ export interface DashboardState {
   finance: {
     bills: {
       name: string;
-      amount: number;
+      amount: number; // 0 when the bill has no fixed amount
       dueAt: string;
       paid: boolean;
       // Set when the due date has passed unpaid, in which case dueAt is the oldest

@@ -17,7 +17,8 @@
     type BillEntry,
     type ListedBill,
   } from '../lib/bills-editor.ts';
-  import { money, shortDate } from '../lib/format.ts';
+  import { shortDate } from '../lib/format.ts';
+  import { amountText } from '../lib/bills.ts';
 
   // onchanged runs after bills are saved, so the dashboard can show them at once.
   let { onchanged }: { onchanged: () => void } = $props();
@@ -191,7 +192,8 @@
             bind:value={draft.amount}
             inputmode="decimal"
             autocomplete="off"
-            placeholder="0.00"
+            placeholder={draft.varies ? 'Shows as Due' : '0.00'}
+            disabled={draft.varies}
           />
         </label>
         <div class="field">
@@ -213,6 +215,16 @@
           </div>
         </div>
       </div>
+      <button
+        type="button"
+        class="varies-toggle"
+        role="switch"
+        aria-checked={draft.varies}
+        onclick={() => (draft.varies = !draft.varies)}
+      >
+        <span class="tick"><Icon name="check" size={14} /></span>
+        <span>Amount varies, like a credit card</span>
+      </button>
       <p class="quiet note">{dueNote(draft.day)}</p>
       {#if formError}<p class="error" role="alert">{formError}</p>{/if}
       <div class="actions">
@@ -278,7 +290,9 @@
                           )}{/if}</span
                       >
                     </span>
-                    <span class="bill-amount">{money(bill.amount)}</span>
+                    <span class="bill-amount"
+                      >{amountText(bill.amount ?? 0, bill.paid)}</span
+                    >
                     <Icon name="arrow-right" size={18} />
                   </button>
                 </li>{/each}
@@ -446,7 +460,8 @@
   .paid-toggle:hover:not(:disabled) .tick {
     color: var(--muted);
   }
-  .paid-toggle[aria-checked='true'] .tick {
+  .paid-toggle[aria-checked='true'] .tick,
+  .varies-toggle[aria-checked='true'] .tick {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--bg);
@@ -550,6 +565,22 @@
   .stepper output {
     font-size: 20px;
     font-variant-numeric: tabular-nums;
+  }
+  /* A switch in the form, drawn with the same ring as the paid tick. */
+  .varies-toggle {
+    justify-content: flex-start;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 12px 0 10px;
+    border-radius: 12px;
+    align-self: flex-start;
+    text-align: left;
+  }
+  .varies-toggle:hover .tick {
+    color: var(--muted);
+  }
+  .varies-toggle[aria-checked='true']:hover .tick {
+    color: var(--bg);
   }
   .note {
     font-size: 14px;

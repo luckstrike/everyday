@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { daysLateText, orderBills, overdueCount } from '../src/lib/bills.ts';
+import {
+  amountText,
+  daysLateText,
+  orderBills,
+  overdueCount,
+} from '../src/lib/bills.ts';
 
 const bill = (name: string, dueAt: string, paid = false, overdue = false) => ({
   name,
@@ -58,4 +63,10 @@ test('overdue bills are counted for the header chip', () => {
 test('days late are worded in the singular for one day', () => {
   assert.equal(daysLateText(1), '1 day overdue');
   assert.equal(daysLateText(4), '4 days overdue');
+});
+test('a bill with no fixed amount says Due until it is paid, then nothing', () => {
+  assert.equal(amountText(84.5, false), '$84.50');
+  assert.equal(amountText(84.5, true), '$84.50');
+  assert.equal(amountText(0, false), 'Due');
+  assert.equal(amountText(0, true), '');
 });
