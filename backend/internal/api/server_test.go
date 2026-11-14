@@ -156,11 +156,12 @@ type fakeStore struct {
 	saves   int
 }
 
-func (f *fakeStore) Entries() ([]bills.Entry, string) {
-	if f.entries == nil {
-		return []bills.Entry{}, f.problem
+func (f *fakeStore) Entries(now time.Time) ([]bills.Listed, string) {
+	listed := []bills.Listed{}
+	for _, e := range f.entries {
+		listed = append(listed, bills.Listed{Entry: e, Due: "2026-11-18"})
 	}
-	return f.entries, f.problem
+	return listed, f.problem
 }
 
 func (f *fakeStore) Save(entries []bills.Entry) error {
@@ -206,8 +207,8 @@ func TestEditorReadsTheBillsAndAnyProblemWithTheFile(t *testing.T) {
 
 func TestEditorSavesAndReturnsWhatWasSaved(t *testing.T) {
 	store := &fakeStore{}
-	w := serveEdit(store, editRequest("PUT", `{"bills":[{"name":"Rent","amount":1850,"day":1,"autopay":false},{"name":"Phone","amount":40,"day":11,"autopay":true}]}`))
-	if w.Code != 200 || store.saves != 1 || len(store.entries) != 2 || !store.entries[1].Autopay {
+	w := serveEdit(store, editRequest("PUT", `{"bills":[{"name":"Rent","amount":1850,"day":1},{"name":"Phone","amount":40,"day":11,"paidFor":"2026-11-11"}]}`))
+	if w.Code != 200 || store.saves != 1 || len(store.entries) != 2 || store.entries[1].PaidFor != "2026-11-11" {
 		t.Fatalf("%d %s, saves %d, entries %+v", w.Code, w.Body.String(), store.saves, store.entries)
 	}
 	if !strings.Contains(w.Body.String(), `"name":"Phone"`) {

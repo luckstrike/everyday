@@ -46,10 +46,11 @@ type Weather struct {
 	Alert         string        `json:"alert"`
 }
 type Bill struct {
-	Name    string    `json:"name"`
-	Amount  float64   `json:"amount"`
-	DueAt   time.Time `json:"dueAt"`
-	Autopay bool      `json:"autopay"`
+	Name   string    `json:"name"`
+	Amount float64   `json:"amount"`
+	DueAt  time.Time `json:"dueAt"`
+	// Paid is whether this bill has been marked paid for the due date it shows.
+	Paid bool `json:"paid"`
 }
 type Finance struct {
 	Bills []Bill `json:"bills"`

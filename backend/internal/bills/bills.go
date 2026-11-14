@@ -24,16 +24,29 @@ import (
 
 // Entry is one bill as written in the file. Every bill repeats monthly.
 type Entry struct {
-	Name    string  `json:"name"`
-	Amount  float64 `json:"amount"`
-	Day     int     `json:"day"` // day of the month it is due, 1 to 31
-	Autopay bool    `json:"autopay"`
+	Name   string  `json:"name"`
+	Amount float64 `json:"amount"`
+	Day    int     `json:"day"` // day of the month it is due, 1 to 31
+	// PaidFor is the due date (YYYY-MM-DD) this bill was last marked paid for. A bill
+	// counts as paid only while that is the due date it is currently counting toward,
+	// so a tick clears itself when the next month's cycle begins.
+	PaidFor string `json:"paidFor,omitempty"`
 }
 
 // file is the shape of the bills file. It is an object, not a bare list, so
 // other fields can be added later without breaking existing files.
 type file struct {
 	Bills []Entry `json:"bills"`
+}
+
+// readFile is what is accepted when reading. It adds one setting that is read and
+// then dropped: bills used to carry an autopay flag, and files written back then
+// must keep working. Saving writes the entries out without it.
+type readFile struct {
+	Bills []struct {
+		Entry
+		Autopay *bool `json:"autopay"` // retired; ignored
+	} `json:"bills"`
 }
 
 // DefaultFile is where the bills file lives unless EVERYDAY_BILLS says otherwise:
@@ -63,14 +76,21 @@ func IsInvalid(err error) bool {
 // Parse reads and validates the contents of a bills file. A misspelled field is an
 // error rather than silently ignored.
 func Parse(data []byte) ([]Entry, error) {
-	var f file
+	var f readFile
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&f); err != nil {
 		return nil, invalidError(err.Error())
 	}
-	return Validate(f.Bills)
+	entries := make([]Entry, len(f.Bills))
+	for i, b := range f.Bills {
+		entries[i] = b.Entry
+	}
+	return Validate(entries)
 }
+
+// dateKey writes a date the way PaidFor does.
+func dateKey(t time.Time) string { return t.Format("2006-01-02") }
 
 // Validate checks entries and returns them tidied (names trimmed). It does not
 // change the slice it is given.
@@ -84,6 +104,11 @@ func Validate(entries []Entry) ([]Entry, error) {
 			return nil, invalidError(fmt.Sprintf("bill %q: day must be 1 to 31, got %d", e.Name, e.Day))
 		case math.IsNaN(e.Amount) || math.IsInf(e.Amount, 0) || e.Amount < 0:
 			return nil, invalidError(fmt.Sprintf("bill %q: amount must be zero or more", e.Name))
+		}
+		if e.PaidFor != "" {
+			if _, err := time.Parse("2006-01-02", e.PaidFor); err != nil {
+				return nil, invalidError(fmt.Sprintf("bill %q: paidFor must be a date like 2026-11-18, got %q", e.Name, e.PaidFor))
+			}
 		}
 		e.Name = strings.TrimSpace(e.Name)
 		tidy[i] = e
@@ -113,25 +138,49 @@ func dueIn(year int, month time.Month, day int, loc *time.Location) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, loc)
 }
 
-// Upcoming turns entries into bills with their next due dates, soonest first.
-// The result is never nil, so it encodes as [] and not null.
+// Upcoming turns entries into bills with their next due dates. Bills still to pay
+// come first, soonest due first, so a display with little room shows what is left to
+// do; bills already paid for their current due date follow, in the same order. The
+// result is never nil, so it encodes as [] and not null.
 func Upcoming(entries []Entry, now time.Time) []domain.Bill {
 	upcoming := make([]domain.Bill, 0, len(entries))
 	for _, e := range entries {
+		due := NextDue(e.Day, now)
 		upcoming = append(upcoming, domain.Bill{
-			Name:    e.Name,
-			Amount:  e.Amount,
-			DueAt:   NextDue(e.Day, now),
-			Autopay: e.Autopay,
+			Name:   e.Name,
+			Amount: e.Amount,
+			DueAt:  due,
+			Paid:   e.PaidFor == dateKey(due),
 		})
 	}
 	sort.SliceStable(upcoming, func(i, j int) bool {
-		if !upcoming[i].DueAt.Equal(upcoming[j].DueAt) {
-			return upcoming[i].DueAt.Before(upcoming[j].DueAt)
+		a, b := upcoming[i], upcoming[j]
+		if a.Paid != b.Paid {
+			return !a.Paid
 		}
-		return upcoming[i].Name < upcoming[j].Name
+		if !a.DueAt.Equal(b.DueAt) {
+			return a.DueAt.Before(b.DueAt)
+		}
+		return a.Name < b.Name
 	})
 	return upcoming
+}
+
+// Listed is a bill as the editor sees it: what is in the file, plus the due date it
+// is counting toward right now and whether that one has been paid.
+type Listed struct {
+	Entry
+	Due  string `json:"due"` // YYYY-MM-DD
+	Paid bool   `json:"paid"`
+}
+
+func list(entries []Entry, now time.Time) []Listed {
+	listed := make([]Listed, len(entries))
+	for i, e := range entries {
+		due := dateKey(NextDue(e.Day, now))
+		listed[i] = Listed{Entry: e, Due: due, Paid: e.PaidFor == due}
+	}
+	return listed
 }
 
 // Source serves the bills in a file, re-reading it whenever it changes.
@@ -187,26 +236,26 @@ func (s *Source) Bills(now time.Time) ([]domain.Bill, domain.SourceStatus) {
 	return Upcoming(s.entries, now), domain.SourceLive
 }
 
-// Entries returns the bills as written in the file, in file order, for editing. A
+// Entries returns the bills as written in the file, in file order, for editing, each with the due date it is counting toward at now and whether that one is paid. A
 // missing file has no entries and no problem. A file that cannot be read or is
 // invalid has no entries and a problem describing why, so the editor can say so and
 // still let the person replace it.
-func (s *Source) Entries() (entries []Entry, problem string) {
+func (s *Source) Entries(now time.Time) (bills []Listed, problem string) {
 	if s.path == "" {
-		return []Entry{}, ""
+		return []Listed{}, ""
 	}
 	data, err := os.ReadFile(s.path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return []Entry{}, ""
+		return []Listed{}, ""
 	}
 	if err != nil {
-		return []Entry{}, err.Error()
+		return []Listed{}, err.Error()
 	}
-	entries, err = Parse(data)
+	entries, err := Parse(data)
 	if err != nil {
-		return []Entry{}, err.Error()
+		return []Listed{}, err.Error()
 	}
-	return entries, ""
+	return list(entries, now), ""
 }
 
 // Save replaces the bills file with entries, after checking them. Invalid entries

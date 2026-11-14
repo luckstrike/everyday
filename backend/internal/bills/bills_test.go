@@ -47,8 +47,8 @@ func TestUpcomingOrdersBySoonestDueThenName(t *testing.T) {
 	now := time.Date(2026, 11, 11, 9, 0, 0, 0, time.Local)
 	got := Upcoming([]Entry{
 		{Name: "Rent", Amount: 1850, Day: 1},
-		{Name: "Internet", Amount: 65, Day: 15, Autopay: true},
-		{Name: "Electricity", Amount: 84.5, Day: 15, Autopay: true},
+		{Name: "Internet", Amount: 65, Day: 15},
+		{Name: "Electricity", Amount: 84.5, Day: 15},
 		{Name: "Phone", Amount: 40, Day: 11},
 	}, now)
 	var names []string
@@ -59,7 +59,7 @@ func TestUpcomingOrdersBySoonestDueThenName(t *testing.T) {
 	if strings.Join(names, ",") != "Phone,Electricity,Internet,Rent" {
 		t.Fatalf("got %v", names)
 	}
-	if !got[3].DueAt.Equal(date(2026, 12, 1)) || got[0].Amount != 40 || !got[1].Autopay {
+	if !got[3].DueAt.Equal(date(2026, 12, 1)) || got[0].Amount != 40 {
 		t.Fatalf("details: %+v", got)
 	}
 }
@@ -73,12 +73,12 @@ func TestUpcomingWithNoBillsIsAnEmptyListNotNull(t *testing.T) {
 func TestParse(t *testing.T) {
 	entries, err := Parse([]byte(`{"bills": [
 	  {"name": " Rent ", "amount": 1850, "day": 1},
-	  {"name": "Internet", "amount": 65.5, "day": 15, "autopay": true}
+	  {"name": "Internet", "amount": 65.5, "day": 15, "paidFor": "2026-11-15"}
 	]}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 2 || entries[0].Name != "Rent" || entries[0].Autopay || entries[1].Amount != 65.5 || !entries[1].Autopay {
+	if len(entries) != 2 || entries[0].Name != "Rent" || entries[0].PaidFor != "" || entries[1].Amount != 65.5 || entries[1].PaidFor != "2026-11-15" {
 		t.Fatalf("entries: %+v", entries)
 	}
 	if entries, err := Parse([]byte(`{"bills": []}`)); err != nil || len(entries) != 0 {
@@ -91,17 +91,19 @@ func TestParse(t *testing.T) {
 
 func TestParseRejectsMistakes(t *testing.T) {
 	cases := map[string]string{
-		"not json":         `{oops`,
-		"a bare list":      `[{"name": "Rent", "amount": 1, "day": 1}]`,
-		"misspelled field": `{"bills": [{"name": "Rent", "amout": 1850, "day": 1}]}`,
-		"unknown section":  `{"bill": []}`,
-		"no name":          `{"bills": [{"amount": 10, "day": 1}]}`,
-		"blank name":       `{"bills": [{"name": "  ", "amount": 10, "day": 1}]}`,
-		"day zero":         `{"bills": [{"name": "Rent", "amount": 10, "day": 0}]}`,
-		"day missing":      `{"bills": [{"name": "Rent", "amount": 10}]}`,
-		"day 32":           `{"bills": [{"name": "Rent", "amount": 10, "day": 32}]}`,
-		"negative amount":  `{"bills": [{"name": "Rent", "amount": -5, "day": 1}]}`,
-		"amount as text":   `{"bills": [{"name": "Rent", "amount": "1850", "day": 1}]}`,
+		"not json":                `{oops`,
+		"a bare list":             `[{"name": "Rent", "amount": 1, "day": 1}]`,
+		"misspelled field":        `{"bills": [{"name": "Rent", "amout": 1850, "day": 1}]}`,
+		"unknown section":         `{"bill": []}`,
+		"no name":                 `{"bills": [{"amount": 10, "day": 1}]}`,
+		"blank name":              `{"bills": [{"name": "  ", "amount": 10, "day": 1}]}`,
+		"day zero":                `{"bills": [{"name": "Rent", "amount": 10, "day": 0}]}`,
+		"day missing":             `{"bills": [{"name": "Rent", "amount": 10}]}`,
+		"day 32":                  `{"bills": [{"name": "Rent", "amount": 10, "day": 32}]}`,
+		"negative amount":         `{"bills": [{"name": "Rent", "amount": -5, "day": 1}]}`,
+		"amount as text":          `{"bills": [{"name": "Rent", "amount": "1850", "day": 1}]}`,
+		"paidFor not a date":      `{"bills": [{"name": "Rent", "amount": 1, "day": 1, "paidFor": "tomorrow"}]}`,
+		"paidFor impossible date": `{"bills": [{"name": "Rent", "amount": 1, "day": 1, "paidFor": "2026-02-30"}]}`,
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -147,7 +149,7 @@ func TestSourceReadsTheFileAndFollowsEdits(t *testing.T) {
 	}
 
 	// Editing the file changes what is served, with no restart.
-	writeBills(t, path, `{"bills": [{"name": "Rent", "amount": 1850, "day": 1}, {"name": "Phone", "amount": 40, "day": 20, "autopay": true}]}`)
+	writeBills(t, path, `{"bills": [{"name": "Rent", "amount": 1850, "day": 1}, {"name": "Phone", "amount": 40, "day": 20}]}`)
 	got, status = source.Bills(now)
 	if status != domain.SourceLive || len(got) != 2 || got[0].Name != "Phone" {
 		t.Fatalf("after edit: %+v, %q", got, status)
@@ -223,7 +225,7 @@ func TestSaveWritesAPrivateFileThatTheSourceReadsBack(t *testing.T) {
 
 	err := source.Save([]Entry{
 		{Name: "  Rent ", Amount: 1850, Day: 1},
-		{Name: "Internet", Amount: 65.5, Day: 15, Autopay: true},
+		{Name: "Internet", Amount: 65.5, Day: 15, PaidFor: "2026-11-15"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -234,12 +236,13 @@ func TestSaveWritesAPrivateFileThatTheSourceReadsBack(t *testing.T) {
 	}
 	// What was saved is what the dashboard serves, with no restart in between.
 	got, status := source.Bills(now)
-	if status != domain.SourceLive || len(got) != 2 || got[0].Name != "Internet" || got[1].Name != "Rent" {
+	// Internet is paid for the 15th, so the unpaid Rent comes first even though it is due later.
+	if status != domain.SourceLive || len(got) != 2 || got[0].Name != "Rent" || got[0].Paid || got[1].Name != "Internet" || !got[1].Paid {
 		t.Fatalf("bills after save: %+v, %q", got, status)
 	}
 	// And the editor sees them in file order, with names tidied.
-	entries, problem := source.Entries()
-	if problem != "" || len(entries) != 2 || entries[0].Name != "Rent" || !entries[1].Autopay || entries[1].Amount != 65.5 {
+	entries, problem := source.Entries(now)
+	if problem != "" || len(entries) != 2 || entries[0].Name != "Rent" || entries[1].PaidFor != "2026-11-15" || entries[1].Amount != 65.5 {
 		t.Fatalf("entries: %+v, %q", entries, problem)
 	}
 }
@@ -274,7 +277,7 @@ func TestSaveCanReplaceABrokenFile(t *testing.T) {
 	source := NewSource(path)
 	now := time.Now()
 
-	entries, problem := source.Entries()
+	entries, problem := source.Entries(now)
 	if len(entries) != 0 || problem == "" || !strings.Contains(problem, "day") {
 		t.Fatalf("a broken file should be reported, not hidden: %+v, %q", entries, problem)
 	}
@@ -291,11 +294,11 @@ func TestSaveCanReplaceABrokenFile(t *testing.T) {
 }
 
 func TestEntriesWithNoFileAreEmptyAndNotAProblem(t *testing.T) {
-	entries, problem := NewSource(filepath.Join(t.TempDir(), "none.json")).Entries()
+	entries, problem := NewSource(filepath.Join(t.TempDir(), "none.json")).Entries(time.Now())
 	if entries == nil || len(entries) != 0 || problem != "" {
 		t.Fatalf("got %#v, %q", entries, problem)
 	}
-	if entries, problem := NewSource("").Entries(); entries == nil || problem != "" {
+	if entries, problem := NewSource("").Entries(time.Now()); entries == nil || problem != "" {
 		t.Fatalf("no path: %#v, %q", entries, problem)
 	}
 	if err := NewSource("").Save(nil); err == nil || IsInvalid(err) {
@@ -324,5 +327,117 @@ func TestIsInvalidSeparatesBadBillsFromOtherFailures(t *testing.T) {
 	}
 	if IsInvalid(os.ErrPermission) {
 		t.Fatal("a permissions error is not an invalid-bills error")
+	}
+}
+
+func at(year int, month time.Month, day int) time.Time {
+	return time.Date(year, month, day, 9, 0, 0, 0, time.Local)
+}
+
+func TestAPaidTickOnlyCountsForTheDueDateItWasMadeFor(t *testing.T) {
+	entries := []Entry{{Name: "Electricity", Amount: 84.5, Day: 18, PaidFor: "2026-11-18"}}
+	for _, c := range []struct {
+		now  time.Time
+		paid bool
+		due  time.Time
+		why  string
+	}{
+		{at(2026, 11, 14), true, date(2026, 11, 18), "paid ahead of the due date"},
+		{at(2026, 11, 18), true, date(2026, 11, 18), "still paid on the day itself"},
+		{at(2026, 11, 19), false, date(2026, 12, 18), "the cycle rolled over, so the tick has cleared itself"},
+		{at(2026, 12, 18), false, date(2026, 12, 18), "next month's bill is not paid by last month's tick"},
+	} {
+		got := Upcoming(entries, c.now)
+		if got[0].Paid != c.paid || !got[0].DueAt.Equal(c.due) {
+			t.Errorf("%s: paid %v due %v, want paid %v due %v", c.why, got[0].Paid, got[0].DueAt.Format("2006-01-02"), c.paid, c.due.Format("2006-01-02"))
+		}
+	}
+}
+
+func TestBillsStillToPayComeBeforePaidOnes(t *testing.T) {
+	now := at(2026, 11, 11)
+	got := Upcoming([]Entry{
+		{Name: "Internet", Amount: 65, Day: 12, PaidFor: "2026-11-12"}, // soonest, but paid
+		{Name: "Rent", Amount: 1850, Day: 20},
+		{Name: "Phone", Amount: 40, Day: 14},
+		{Name: "Water", Amount: 30, Day: 13, PaidFor: "2026-11-13"}, // paid
+	}, now)
+	var names []string
+	for _, b := range got {
+		names = append(names, b.Name)
+	}
+	// What is left to pay first, soonest due; then what is already paid, soonest due.
+	if strings.Join(names, ",") != "Phone,Rent,Internet,Water" {
+		t.Fatalf("got %v", names)
+	}
+}
+
+func TestTheEditorSeesTheCurrentDueDateAndPaidState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bills.json")
+	source := NewSource(path)
+	if err := source.Save([]Entry{
+		{Name: "Electricity", Amount: 84.5, Day: 18, PaidFor: "2026-11-18"},
+		{Name: "Rent", Amount: 1850, Day: 1},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	listed, problem := source.Entries(at(2026, 11, 14))
+	if problem != "" || len(listed) != 2 {
+		t.Fatalf("%+v, %q", listed, problem)
+	}
+	// In file order, each with the date it is counting toward.
+	if listed[0].Name != "Electricity" || listed[0].Due != "2026-11-18" || !listed[0].Paid {
+		t.Fatalf("electricity: %+v", listed[0])
+	}
+	if listed[1].Name != "Rent" || listed[1].Due != "2026-12-01" || listed[1].Paid {
+		t.Fatalf("rent: %+v", listed[1])
+	}
+	// A week later the cycle has rolled, and the same tick no longer counts.
+	listed, _ = source.Entries(at(2026, 11, 25))
+	if listed[0].Due != "2026-12-18" || listed[0].Paid {
+		t.Fatalf("after the cycle rolled: %+v", listed[0])
+	}
+}
+
+func TestFilesWrittenWithTheRetiredAutopayFlagStillWork(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bills.json")
+	writeBills(t, path, `{"bills": [
+	  {"name": "Rent", "amount": 1900, "day": 1, "autopay": false},
+	  {"name": "Internet", "amount": 60.53, "day": 28, "autopay": true}
+	]}`)
+	source := NewSource(path)
+	now := at(2026, 11, 14)
+
+	// The dashboard keeps working, ignoring the flag.
+	got, status := source.Bills(now)
+	if status != domain.SourceLive || len(got) != 2 {
+		t.Fatalf("a file with the retired flag must still be live: %+v, %q", got, status)
+	}
+	listed, problem := source.Entries(now)
+	if problem != "" || len(listed) != 2 || listed[1].Amount != 60.53 {
+		t.Fatalf("editor: %+v, %q", listed, problem)
+	}
+	// Saving writes the bills back without it, so the file tidies itself.
+	if err := source.Save([]Entry{listed[0].Entry, listed[1].Entry}); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	if strings.Contains(string(data), "autopay") {
+		t.Fatalf("the retired flag should be gone after a save: %s", data)
+	}
+	if !strings.Contains(string(data), `"name": "Internet"`) {
+		t.Fatalf("the bills themselves must survive: %s", data)
+	}
+}
+
+func TestAnUnpaidBillWritesNoPaidForField(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bills.json")
+	source := NewSource(path)
+	if err := source.Save([]Entry{{Name: "Rent", Amount: 1, Day: 1}, {Name: "Phone", Amount: 1, Day: 2, PaidFor: "2026-11-02"}}); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	if strings.Count(string(data), "paidFor") != 1 {
+		t.Fatalf("only the paid bill should carry paidFor: %s", data)
 	}
 }

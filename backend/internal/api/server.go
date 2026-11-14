@@ -30,9 +30,10 @@ type CalendarSource interface {
 	Current(now time.Time) ([]domain.CalendarEvent, bool)
 }
 
-// BillsStore lets the settings panel read and replace the bills file.
+// BillsStore lets the settings panel read and replace the bills file. Entries says,
+// as of now, which due date each bill is counting toward and whether it is paid.
 type BillsStore interface {
-	Entries() (entries []bills.Entry, problem string)
+	Entries(now time.Time) (bills []bills.Listed, problem string)
 	Save(entries []bills.Entry) error
 }
 
@@ -130,12 +131,12 @@ func loopbackHost(host string) bool {
 }
 
 type billsBody struct {
-	Bills   []bills.Entry `json:"bills"`
-	Problem string        `json:"problem,omitempty"`
+	Bills   []bills.Listed `json:"bills"`
+	Problem string         `json:"problem,omitempty"`
 }
 
 func (s *Server) getBills(w http.ResponseWriter, r *http.Request) {
-	entries, problem := s.opts.BillsStore.Entries()
+	entries, problem := s.opts.BillsStore.Entries(time.Now())
 	respond(w, billsBody{Bills: entries, Problem: problem})
 }
 
@@ -164,7 +165,7 @@ func (s *Server) putBills(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "the bills could not be saved")
 		return
 	}
-	entries, problem := s.opts.BillsStore.Entries()
+	entries, problem := s.opts.BillsStore.Entries(time.Now())
 	respond(w, billsBody{Bills: entries, Problem: problem})
 }
 
