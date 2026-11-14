@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import SettingsHeader from './SettingsHeader.svelte';
-  import type { Theme } from '../lib/theme.ts';
+  import { themes, type Theme } from '../lib/theme.ts';
   let { theme, onchange }: { theme: Theme; onchange: (theme: Theme) => void } =
     $props();
 </script>
@@ -9,16 +9,15 @@
 <div class="appearance">
   <SettingsHeader title="Appearance" description="A color for your space." />
   <div class="theme-options" role="group" aria-label="Dashboard theme">
-    {#each ['evergreen', 'turquoise'] as value}<button
-        class:active={theme === value}
-        aria-pressed={theme === value}
-        onclick={() => onchange(value as Theme)}
-        ><span
-          class="theme-swatch"
-          class:turquoise={value === 'turquoise'}
-          aria-hidden="true"
-        ></span><span>{value === 'evergreen' ? 'Evergreen' : 'Turquoise'}</span
-        >{#if theme === value}<Icon name="check" size={18} />{/if}</button
+    {#each themes as { id, label }}<button
+        class:active={theme === id}
+        aria-pressed={theme === id}
+        onclick={() => onchange(id)}
+        ><span class="theme-swatch" data-theme={id} aria-hidden="true"
+        ></span><span>{label}</span>{#if theme === id}<Icon
+            name="check"
+            size={18}
+          />{/if}</button
       >{/each}
   </div>
 </div>
@@ -52,15 +51,13 @@
   .theme-options :global(svg) {
     color: var(--accent);
   }
+  /* The swatch carries its theme's data-theme, so it reads that theme's colours from
+     app.css whichever theme is showing: the fill is its accent, the ring its line. */
   .theme-swatch {
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    border: 6px solid oklch(39.45% 0.0284 156.49);
-    background: oklch(82.38% 0.0619 130.22);
-  }
-  .theme-swatch.turquoise {
-    border-color: oklch(42% 0.035 190);
-    background: oklch(83% 0.084 185);
+    border: 6px solid var(--line);
+    background: var(--accent);
   }
 </style>

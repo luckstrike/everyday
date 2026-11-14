@@ -118,7 +118,7 @@ The MVP is a landscape-only display with one fixed layout and five widgets:
 | Up next | Your next calendar event |
 | Bills | Your recurring bills as cards: overdue first, then what is left to pay, then what is already paid, each with its amount and due date |
 
-Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Tap the settings gear beside **Dallas, TX** to open [Settings](#settings), where you can edit your bills and choose **Evergreen** or **Turquoise**. The theme applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
+Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Tap the settings gear beside **Dallas, TX** to open [Settings](#settings), where you can edit your bills and choose a colour theme: **Amber**, **Evergreen**, **Graphite**, **Indigo**, **Ocean**, **Plum**, **Stone** or **Turquoise**. The theme applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
 
 ## Architecture
 

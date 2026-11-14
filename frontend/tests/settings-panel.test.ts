@@ -1,3 +1,4 @@
+import { themes } from '../src/lib/theme.ts';
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { createServer, type ViteDevServer } from 'vite';
@@ -64,18 +65,19 @@ test('the bills section starts by saying it is loading, before anything is shown
   assert.doesNotMatch(body, /class="bill-form"|Add bill/);
 });
 
-test('the appearance section offers each theme and marks the current one', () => {
-  for (const [theme, current, other] of [
-    ['evergreen', 'Evergreen', 'Turquoise'],
-    ['turquoise', 'Turquoise', 'Evergreen'],
-  ]) {
-    const body = panel('appearance', theme);
+test('the appearance section offers every theme and marks only the current one', () => {
+  for (const { id, label } of themes) {
+    const body = panel('appearance', id);
     assert.match(
       body,
-      new RegExp(`aria-pressed="true"[^>]*>[\\s\\S]*?${current}`),
+      new RegExp(`aria-pressed="true"[^>]*>[\\s\\S]*?${label}`),
     );
     assert.equal(body.match(/aria-pressed="true"/g)?.length, 1);
-    assert.ok(body.includes(other));
+    // Every theme is on offer, each with a swatch that reads its own colours.
+    for (const other of themes) {
+      assert.ok(body.includes(`>${other.label}<`), other.label);
+      assert.ok(body.includes(`data-theme="${other.id}"`), other.id);
+    }
   }
 });
 

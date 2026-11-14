@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme='evergreen'] {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -346,7 +347,7 @@ footer > span {
     grid-template-rows: 44px minmax(0, 1fr) 44px;
   }
 }
-:root[data-theme='turquoise'] {
+[data-theme='turquoise'] {
   --bg: oklch(24.5% 0.027 190);
   --surface: oklch(30% 0.035 190);
   --accent: oklch(83% 0.084 185);
@@ -355,6 +356,71 @@ footer > span {
   --muted: oklch(76% 0.024 190);
   --line: oklch(42% 0.035 190);
   --placement-bg: oklch(30% 0.04 190 / 0.96);
+}
+/* Ocean, Plum, Indigo, Graphite, Stone and Amber follow the same recipe as Turquoise: the same
+   lightness and saturation steps, with only the hue changed. Their accents sit well
+   away from the warm coral of --warn, so "needs attention" stays distinct. Graphite
+   and Stone are nearly colourless, one cool and one warm, each with a faint tint in
+   its accent so selected states still stand out. */
+[data-theme='ocean'] {
+  --bg: oklch(24.5% 0.03 250);
+  --surface: oklch(30% 0.038 250);
+  --accent: oklch(82% 0.085 245);
+  --accent-hover: oklch(87% 0.068 245);
+  --text: oklch(94% 0.013 250);
+  --muted: oklch(76% 0.026 250);
+  --line: oklch(42% 0.038 250);
+  --placement-bg: oklch(30% 0.04 250 / 0.96);
+}
+[data-theme='plum'] {
+  --bg: oklch(24.5% 0.03 320);
+  --surface: oklch(30% 0.038 320);
+  --accent: oklch(82% 0.085 320);
+  --accent-hover: oklch(87% 0.068 320);
+  --text: oklch(94% 0.014 320);
+  --muted: oklch(76% 0.026 320);
+  --line: oklch(42% 0.038 320);
+  --placement-bg: oklch(30% 0.04 320 / 0.96);
+}
+[data-theme='graphite'] {
+  --bg: oklch(24.5% 0.006 260);
+  --surface: oklch(30% 0.008 260);
+  --accent: oklch(85% 0.022 250);
+  --accent-hover: oklch(90% 0.017 250);
+  --text: oklch(94% 0.006 260);
+  --muted: oklch(76% 0.01 260);
+  --line: oklch(42% 0.012 260);
+  --placement-bg: oklch(30% 0.01 260 / 0.96);
+}
+[data-theme='amber'] {
+  --bg: oklch(24.5% 0.024 75);
+  --surface: oklch(30% 0.03 75);
+  --accent: oklch(84% 0.085 98);
+  --accent-hover: oklch(89% 0.068 98);
+  --text: oklch(94% 0.014 85);
+  --muted: oklch(76% 0.026 80);
+  --line: oklch(42% 0.034 75);
+  --placement-bg: oklch(30% 0.035 75 / 0.96);
+}
+[data-theme='indigo'] {
+  --bg: oklch(24.5% 0.03 283);
+  --surface: oklch(30% 0.038 283);
+  --accent: oklch(82% 0.085 283);
+  --accent-hover: oklch(87% 0.068 283);
+  --text: oklch(94% 0.014 283);
+  --muted: oklch(76% 0.026 283);
+  --line: oklch(42% 0.038 283);
+  --placement-bg: oklch(30% 0.04 283 / 0.96);
+}
+[data-theme='stone'] {
+  --bg: oklch(24.5% 0.008 75);
+  --surface: oklch(30% 0.01 75);
+  --accent: oklch(85% 0.025 80);
+  --accent-hover: oklch(90% 0.02 80);
+  --text: oklch(94% 0.006 75);
+  --muted: oklch(76% 0.01 75);
+  --line: oklch(42% 0.012 75);
+  --placement-bg: oklch(30% 0.012 75 / 0.96);
 }
 .header-tools {
   display: flex;
