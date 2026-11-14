@@ -51,6 +51,10 @@ type Bill struct {
 	DueAt  time.Time `json:"dueAt"`
 	// Paid is whether this bill has been marked paid for the due date it shows.
 	Paid bool `json:"paid"`
+	// Overdue is set for a bill whose due date has passed unpaid, in which case DueAt
+	// is the oldest date it missed and DaysLate is how many days ago that was.
+	Overdue  bool `json:"overdue"`
+	DaysLate int  `json:"daysLate"`
 }
 type Finance struct {
 	Bills []Bill `json:"bills"`

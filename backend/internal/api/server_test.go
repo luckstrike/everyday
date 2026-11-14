@@ -164,7 +164,7 @@ func (f *fakeStore) Entries(now time.Time) ([]bills.Listed, string) {
 	return listed, f.problem
 }
 
-func (f *fakeStore) Save(entries []bills.Entry) error {
+func (f *fakeStore) Save(entries []bills.Entry, now time.Time) error {
 	f.saves++
 	if f.saveErr != nil {
 		return f.saveErr
@@ -218,6 +218,14 @@ func TestEditorSavesAndReturnsWhatWasSaved(t *testing.T) {
 	w = serveEdit(store, editRequest("PUT", `{"bills":[]}`))
 	if w.Code != 200 || len(store.entries) != 0 {
 		t.Fatalf("empty save: %d %s, %+v", w.Code, w.Body.String(), store.entries)
+	}
+}
+
+func TestEditorPassesTheAddedDateThroughSoSavingDoesNotRestartTracking(t *testing.T) {
+	store := &fakeStore{}
+	w := serveEdit(store, editRequest("PUT", `{"bills":[{"name":"Phone","amount":45,"day":10,"paidFor":"2026-10-10","addedOn":"2026-09-01"}]}`))
+	if w.Code != 200 || len(store.entries) != 1 || store.entries[0].AddedOn != "2026-09-01" || store.entries[0].PaidFor != "2026-10-10" {
+		t.Fatalf("%d %s, %+v", w.Code, w.Body.String(), store.entries)
 	}
 }
 

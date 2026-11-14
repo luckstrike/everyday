@@ -10,6 +10,9 @@ import (
 	"everyday/backend/internal/domain"
 )
 
+// saveTime is the moment bills are saved in tests, which stamps any bill without an added date.
+var saveTime = time.Date(2026, 11, 11, 9, 0, 0, 0, time.Local)
+
 func date(year int, month time.Month, day int) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, time.Local)
 }
@@ -104,6 +107,7 @@ func TestParseRejectsMistakes(t *testing.T) {
 		"amount as text":          `{"bills": [{"name": "Rent", "amount": "1850", "day": 1}]}`,
 		"paidFor not a date":      `{"bills": [{"name": "Rent", "amount": 1, "day": 1, "paidFor": "tomorrow"}]}`,
 		"paidFor impossible date": `{"bills": [{"name": "Rent", "amount": 1, "day": 1, "paidFor": "2026-02-30"}]}`,
+		"addedOn not a date":      `{"bills": [{"name": "Rent", "amount": 1, "day": 1, "addedOn": "yesterday"}]}`,
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -226,7 +230,7 @@ func TestSaveWritesAPrivateFileThatTheSourceReadsBack(t *testing.T) {
 	err := source.Save([]Entry{
 		{Name: "  Rent ", Amount: 1850, Day: 1},
 		{Name: "Internet", Amount: 65.5, Day: 15, PaidFor: "2026-11-15"},
-	})
+	}, saveTime)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +254,7 @@ func TestSaveWritesAPrivateFileThatTheSourceReadsBack(t *testing.T) {
 func TestSaveRejectsInvalidBillsWithoutTouchingTheFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bills.json")
 	source := NewSource(path)
-	if err := source.Save([]Entry{{Name: "Rent", Amount: 1850, Day: 1}}); err != nil {
+	if err := source.Save([]Entry{{Name: "Rent", Amount: 1850, Day: 1}}, saveTime); err != nil {
 		t.Fatal(err)
 	}
 	before, _ := os.ReadFile(path)
@@ -261,7 +265,7 @@ func TestSaveRejectsInvalidBillsWithoutTouchingTheFile(t *testing.T) {
 		"day too large":   {{Name: "Rent", Amount: 1, Day: 32}},
 		"negative amount": {{Name: "Rent", Amount: -1, Day: 1}},
 	} {
-		err := source.Save(bad)
+		err := source.Save(bad, saveTime)
 		if err == nil || !IsInvalid(err) {
 			t.Fatalf("%s: want an invalid-bills error, got %v", name, err)
 		}
@@ -285,7 +289,7 @@ func TestSaveCanReplaceABrokenFile(t *testing.T) {
 		t.Fatalf("status %q", status)
 	}
 	// The editor is how someone recovers from a mistake in the file.
-	if err := source.Save([]Entry{{Name: "Rent", Amount: 1850, Day: 1}}); err != nil {
+	if err := source.Save([]Entry{{Name: "Rent", Amount: 1850, Day: 1}}, saveTime); err != nil {
 		t.Fatal(err)
 	}
 	if got, status := source.Bills(now); status != domain.SourceLive || len(got) != 1 {
@@ -301,7 +305,7 @@ func TestEntriesWithNoFileAreEmptyAndNotAProblem(t *testing.T) {
 	if entries, problem := NewSource("").Entries(time.Now()); entries == nil || problem != "" {
 		t.Fatalf("no path: %#v, %q", entries, problem)
 	}
-	if err := NewSource("").Save(nil); err == nil || IsInvalid(err) {
+	if err := NewSource("").Save(nil, saveTime); err == nil || IsInvalid(err) {
 		t.Fatalf("saving with no path is a setup error, not invalid bills: %v", err)
 	}
 }
@@ -309,7 +313,7 @@ func TestEntriesWithNoFileAreEmptyAndNotAProblem(t *testing.T) {
 func TestSavingNoBillsWritesAnEmptyList(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bills.json")
 	source := NewSource(path)
-	if err := source.Save(nil); err != nil {
+	if err := source.Save(nil, saveTime); err != nil {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(path)
@@ -378,7 +382,7 @@ func TestTheEditorSeesTheCurrentDueDateAndPaidState(t *testing.T) {
 	if err := source.Save([]Entry{
 		{Name: "Electricity", Amount: 84.5, Day: 18, PaidFor: "2026-11-18"},
 		{Name: "Rent", Amount: 1850, Day: 1},
-	}); err != nil {
+	}, saveTime); err != nil {
 		t.Fatal(err)
 	}
 	listed, problem := source.Entries(at(2026, 11, 14))
@@ -418,7 +422,7 @@ func TestFilesWrittenWithTheRetiredAutopayFlagStillWork(t *testing.T) {
 		t.Fatalf("editor: %+v, %q", listed, problem)
 	}
 	// Saving writes the bills back without it, so the file tidies itself.
-	if err := source.Save([]Entry{listed[0].Entry, listed[1].Entry}); err != nil {
+	if err := source.Save([]Entry{listed[0].Entry, listed[1].Entry}, saveTime); err != nil {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(path)
@@ -433,11 +437,236 @@ func TestFilesWrittenWithTheRetiredAutopayFlagStillWork(t *testing.T) {
 func TestAnUnpaidBillWritesNoPaidForField(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bills.json")
 	source := NewSource(path)
-	if err := source.Save([]Entry{{Name: "Rent", Amount: 1, Day: 1}, {Name: "Phone", Amount: 1, Day: 2, PaidFor: "2026-11-02"}}); err != nil {
+	if err := source.Save([]Entry{{Name: "Rent", Amount: 1, Day: 1}, {Name: "Phone", Amount: 1, Day: 2, PaidFor: "2026-11-02"}}, saveTime); err != nil {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(path)
 	if strings.Count(string(data), "paidFor") != 1 {
 		t.Fatalf("only the paid bill should carry paidFor: %s", data)
+	}
+}
+
+func TestPrevDue(t *testing.T) {
+	cases := []struct {
+		name string
+		day  int
+		now  time.Time
+		want time.Time
+	}{
+		{"earlier this month", 5, at(2026, 11, 11), date(2026, 11, 5)},
+		{"today has not passed yet", 11, at(2026, 11, 11), date(2026, 10, 11)},
+		{"later this month, so last month's", 20, at(2026, 11, 11), date(2026, 10, 20)},
+		{"across the new year", 20, at(2027, 1, 5), date(2026, 12, 20)},
+		{"the 31st in a 30-day month", 31, at(2026, 12, 5), date(2026, 11, 30)},
+		{"the 31st, March looking back at February", 31, at(2026, 3, 2), date(2026, 2, 28)},
+		{"the 29th, March looking back at a leap February", 29, at(2028, 3, 1), date(2028, 2, 29)},
+	}
+	for _, c := range cases {
+		if got := PrevDue(c.day, c.now); !got.Equal(c.want) {
+			t.Errorf("%s: PrevDue(%d, %v) = %v, want %v", c.name, c.day, c.now.Format("2006-01-02"), got.Format("2006-01-02"), c.want.Format("2006-01-02"))
+		}
+	}
+}
+
+func first(e Entry, now time.Time) domain.Bill { return Upcoming([]Entry{e}, now)[0] }
+
+func TestABillWithNoAddedDateIsNeverOverdue(t *testing.T) {
+	got := first(Entry{Name: "Phone", Amount: 45, Day: 10}, at(2026, 11, 14))
+	if got.Overdue || got.DaysLate != 0 || !got.DueAt.Equal(date(2026, 12, 10)) {
+		t.Fatalf("an untracked bill whose day has passed just moves to next month: %+v", got)
+	}
+}
+
+func TestAMissedDueDateMakesABillOverdueUntilItIsPaid(t *testing.T) {
+	e := Entry{Name: "Phone", Amount: 45, Day: 10, AddedOn: "2026-11-01"}
+	got := first(e, at(2026, 11, 14))
+	if !got.Overdue || got.Paid || got.DaysLate != 4 || !got.DueAt.Equal(date(2026, 11, 10)) {
+		t.Fatalf("overdue since the 10th, four days ago: %+v", got)
+	}
+	// Paying settles it, and the next due date takes over.
+	e.PaidFor = "2026-11-10"
+	got = first(e, at(2026, 11, 14))
+	if got.Overdue || got.DaysLate != 0 || got.Paid || !got.DueAt.Equal(date(2026, 12, 10)) {
+		t.Fatalf("after paying, next month's bill: %+v", got)
+	}
+}
+
+func TestABillIsNotOverdueForADateBeforeItWasAdded(t *testing.T) {
+	// Added on the 14th with a due day of the 10th: this month's 10th was never missed.
+	got := first(Entry{Name: "New", Amount: 1, Day: 10, AddedOn: "2026-11-14"}, at(2026, 11, 14))
+	if got.Overdue || !got.DueAt.Equal(date(2026, 12, 10)) {
+		t.Fatalf("a new bill starts clean: %+v", got)
+	}
+}
+
+func TestABillAddedOnItsDueDayIsOverdueOnlyOnceTheDayHasPassed(t *testing.T) {
+	e := Entry{Name: "Phone", Amount: 45, Day: 10, AddedOn: "2026-11-10"}
+	if got := first(e, at(2026, 11, 10)); got.Overdue || !got.DueAt.Equal(date(2026, 11, 10)) {
+		t.Fatalf("still due today, not late: %+v", got)
+	}
+	if got := first(e, at(2026, 11, 11)); !got.Overdue || got.DaysLate != 1 {
+		t.Fatalf("the next day it is one day late: %+v", got)
+	}
+}
+
+func TestOneTickSettlesEveryMissedMonth(t *testing.T) {
+	e := Entry{Name: "Phone", Amount: 45, Day: 10, AddedOn: "2026-09-01"}
+	now := at(2026, 11, 14)
+
+	got := first(e, now)
+	// September, October and November were all missed; it is shown as late since the first.
+	if !got.Overdue || !got.DueAt.Equal(date(2026, 9, 10)) || got.DaysLate != 65 {
+		t.Fatalf("overdue since September: %+v", got)
+	}
+	// Ticking records the most recent missed date, which settles the earlier ones too.
+	listed := list([]Entry{e}, now)[0]
+	if listed.PayFor != "2026-11-10" {
+		t.Fatalf("ticking should record the latest missed date, got %s", listed.PayFor)
+	}
+	e.PaidFor = listed.PayFor
+	if got := first(e, now); got.Overdue || !got.DueAt.Equal(date(2026, 12, 10)) {
+		t.Fatalf("one tick should clear all three: %+v", got)
+	}
+}
+
+func TestPayingForALaterDateSettlesTheEarlierOnes(t *testing.T) {
+	// Added in September, paid through October: only November is missed.
+	e := Entry{Name: "Phone", Amount: 45, Day: 10, AddedOn: "2026-09-01", PaidFor: "2026-10-10"}
+	got := first(e, at(2026, 11, 14))
+	if !got.Overdue || !got.DueAt.Equal(date(2026, 11, 10)) || got.DaysLate != 4 {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestPayingAheadOfTheDueDateIsNotOverdue(t *testing.T) {
+	e := Entry{Name: "Electricity", Amount: 84.5, Day: 18, AddedOn: "2026-10-01", PaidFor: "2026-11-18"}
+	got := first(e, at(2026, 11, 14))
+	if got.Overdue || !got.Paid || !got.DueAt.Equal(date(2026, 11, 18)) {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestUntickingGoesBackToThePreviousDateSoNothingPaidBecomesOverdue(t *testing.T) {
+	// Paid ahead for the 18th, in a bill that has been tracked since October.
+	e := Entry{Name: "Electricity", Amount: 84.5, Day: 18, AddedOn: "2026-10-01", PaidFor: "2026-11-18"}
+	now := at(2026, 11, 14)
+	listed := list([]Entry{e}, now)[0]
+	if !listed.Paid || listed.UnpayTo != "2026-10-18" {
+		t.Fatalf("%+v", listed)
+	}
+	// Forgetting the paid date altogether would make October, which was paid, look
+	// missed. Going back to October's date does not.
+	e.PaidFor = listed.UnpayTo
+	got := first(e, now)
+	if got.Overdue || got.Paid || !got.DueAt.Equal(date(2026, 11, 18)) {
+		t.Fatalf("unticked: back to unpaid, not overdue: %+v", got)
+	}
+	e.PaidFor = ""
+	if !first(e, now).Overdue {
+		t.Fatal("this is the mistake the previous date avoids: with no date, October looks missed")
+	}
+}
+
+func TestMissedDatesFollowShortMonths(t *testing.T) {
+	// Due on the 31st, tracked from the 1st: November's date is the 30th.
+	e := Entry{Name: "Loan", Amount: 100, Day: 31, AddedOn: "2026-11-01"}
+	got := first(e, at(2026, 12, 2))
+	if !got.Overdue || !got.DueAt.Equal(date(2026, 11, 30)) || got.DaysLate != 2 {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestDaysLateCountCalendarDaysAcrossAClockChange(t *testing.T) {
+	chicago, err := time.LoadLocation("America/Chicago")
+	if err != nil {
+		t.Skip("no time zone data on this machine")
+	}
+	// Daylight saving ended on 1 November 2026, making that day 25 hours long.
+	e := Entry{Name: "Phone", Amount: 45, Day: 30, AddedOn: "2026-10-01"}
+	for _, hour := range []int{0, 1, 12, 23} {
+		now := time.Date(2026, 11, 3, hour, 30, 0, 0, chicago)
+		got := first(e, now)
+		if !got.Overdue || got.DaysLate != 4 || got.DueAt.Format("2006-01-02") != "2026-10-30" {
+			t.Errorf("at %02d:30: %+v", hour, got)
+		}
+	}
+}
+
+func TestMissedBillsLeadThenBillsStillToPayThenPaidOnes(t *testing.T) {
+	now := at(2026, 11, 14)
+	got := Upcoming([]Entry{
+		{Name: "Paid", Amount: 1, Day: 15, PaidFor: "2026-11-15"},
+		{Name: "Upcoming", Amount: 1, Day: 20},
+		{Name: "Late4", Amount: 1, Day: 10, AddedOn: "2026-11-01"},
+		{Name: "Late6", Amount: 1, Day: 8, AddedOn: "2026-11-01"},
+	}, now)
+	var names []string
+	for _, b := range got {
+		names = append(names, b.Name)
+	}
+	// The longest overdue first, then what is still to pay, then what is paid.
+	if strings.Join(names, ",") != "Late6,Late4,Upcoming,Paid" {
+		t.Fatalf("got %v", names)
+	}
+}
+
+func TestTheEditorIsToldWhatToRecordForEachBill(t *testing.T) {
+	now := at(2026, 11, 14)
+	listed := list([]Entry{
+		{Name: "Late", Amount: 1, Day: 10, AddedOn: "2026-11-01"},
+		{Name: "Upcoming", Amount: 1, Day: 20},
+	}, now)
+	late, upcoming := listed[0], listed[1]
+	if !late.Overdue || late.Due != "2026-11-10" || late.DaysLate != 4 || late.PayFor != "2026-11-10" || late.Paid {
+		t.Fatalf("late: %+v", late)
+	}
+	if upcoming.Overdue || upcoming.Due != "2026-11-20" || upcoming.PayFor != "2026-11-20" || upcoming.UnpayTo != "2026-10-20" {
+		t.Fatalf("upcoming: %+v", upcoming)
+	}
+}
+
+func TestSavingStampsTheAddedDateOnlyWhereItIsMissing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bills.json")
+	source := NewSource(path)
+	if err := source.Save([]Entry{
+		{Name: "Old", Amount: 1, Day: 5, AddedOn: "2026-09-01"},
+		{Name: "New", Amount: 1, Day: 6},
+	}, saveTime); err != nil {
+		t.Fatal(err)
+	}
+	listed, problem := source.Entries(saveTime)
+	if problem != "" || len(listed) != 2 {
+		t.Fatalf("%+v, %q", listed, problem)
+	}
+	if listed[0].AddedOn != "2026-09-01" {
+		t.Fatalf("a bill keeps the date it was added, not today's: %q", listed[0].AddedOn)
+	}
+	if listed[1].AddedOn != "2026-11-11" {
+		t.Fatalf("a bill with no date is stamped with the day it is saved: %q", listed[1].AddedOn)
+	}
+}
+
+func TestAHandWrittenFileStartsBeingTrackedOnlyOnceItIsSaved(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bills.json")
+	writeBills(t, path, `{"bills": [{"name": "Rent", "amount": 1900, "day": 1}]}`)
+	source := NewSource(path)
+	now := at(2026, 11, 14)
+
+	// Untracked: the 1st has passed, but nothing flashes overdue.
+	got, _ := source.Bills(now)
+	if got[0].Overdue {
+		t.Fatal("an existing bill must not turn overdue just because tracking now exists")
+	}
+	// Saving it from Settings starts the tracking from that day, still without a false alarm.
+	listed, _ := source.Entries(now)
+	if err := source.Save([]Entry{listed[0].Entry}, now); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := source.Bills(now); got[0].Overdue {
+		t.Fatalf("tracking starts clean on the day it begins: %+v", got[0])
+	}
+	// But a due date that passes after that, unpaid, is missed.
+	if got, _ := source.Bills(at(2026, 12, 2)); !got[0].Overdue || got[0].DaysLate != 1 {
+		t.Fatalf("the 1st of December, missed: %+v", got[0])
 	}
 }

@@ -34,7 +34,7 @@ type CalendarSource interface {
 // as of now, which due date each bill is counting toward and whether it is paid.
 type BillsStore interface {
 	Entries(now time.Time) (bills []bills.Listed, problem string)
-	Save(entries []bills.Entry) error
+	Save(entries []bills.Entry, now time.Time) error
 }
 
 // FinanceSource provides the bills due next and says how far to trust them: live,
@@ -156,7 +156,7 @@ func (s *Server) putBills(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "could not read the bills: "+err.Error())
 		return
 	}
-	if err := s.opts.BillsStore.Save(body.Bills); err != nil {
+	if err := s.opts.BillsStore.Save(body.Bills, time.Now()); err != nil {
 		if bills.IsInvalid(err) {
 			respondError(w, http.StatusBadRequest, err.Error())
 			return

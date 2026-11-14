@@ -27,10 +27,17 @@ type Entry struct {
 	Name   string  `json:"name"`
 	Amount float64 `json:"amount"`
 	Day    int     `json:"day"` // day of the month it is due, 1 to 31
-	// PaidFor is the due date (YYYY-MM-DD) this bill was last marked paid for. A bill
-	// counts as paid only while that is the due date it is currently counting toward,
-	// so a tick clears itself when the next month's cycle begins.
+	// PaidFor is the latest due date (YYYY-MM-DD) this bill has been marked paid for.
+	// Paying marks a due date paid, and every earlier one with it, so one tick clears
+	// however many months were missed. A tick for the upcoming date clears itself when
+	// the next month's bill comes round.
 	PaidFor string `json:"paidFor,omitempty"`
+	// AddedOn is the day (YYYY-MM-DD) the bill was first saved. Only due dates from
+	// that day on can be missed, so adding a bill whose day has already passed this
+	// month does not make it overdue at once. A bill with no AddedOn, such as one
+	// written by hand, is never reported overdue; it gets a date the next time it is
+	// saved from Settings.
+	AddedOn string `json:"addedOn,omitempty"`
 }
 
 // file is the shape of the bills file. It is an object, not a bare list, so
@@ -105,9 +112,12 @@ func Validate(entries []Entry) ([]Entry, error) {
 		case math.IsNaN(e.Amount) || math.IsInf(e.Amount, 0) || e.Amount < 0:
 			return nil, invalidError(fmt.Sprintf("bill %q: amount must be zero or more", e.Name))
 		}
-		if e.PaidFor != "" {
-			if _, err := time.Parse("2006-01-02", e.PaidFor); err != nil {
-				return nil, invalidError(fmt.Sprintf("bill %q: paidFor must be a date like 2026-11-18, got %q", e.Name, e.PaidFor))
+		for field, value := range map[string]string{"paidFor": e.PaidFor, "addedOn": e.AddedOn} {
+			if value == "" {
+				continue
+			}
+			if _, err := time.Parse("2006-01-02", value); err != nil {
+				return nil, invalidError(fmt.Sprintf("bill %q: %s must be a date like 2026-11-18, got %q", e.Name, field, value))
 			}
 		}
 		e.Name = strings.TrimSpace(e.Name)
@@ -138,25 +148,117 @@ func dueIn(year int, month time.Month, day int, loc *time.Location) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, loc)
 }
 
-// Upcoming turns entries into bills with their next due dates. Bills still to pay
-// come first, soonest due first, so a display with little room shows what is left to
-// do; bills already paid for their current due date follow, in the same order. The
-// result is never nil, so it encodes as [] and not null.
+// PrevDue is the due date before today: the most recent date a bill due on the given
+// day of the month has already passed. Like NextDue it clamps to a short month, and
+// today itself counts as not yet passed.
+func PrevDue(day int, now time.Time) time.Time {
+	loc := now.Location()
+	year, month, today := now.Date()
+	due := dueIn(year, month, day, loc)
+	if !due.Before(time.Date(year, month, today, 0, 0, 0, 0, loc)) {
+		due = dueIn(year, month-1, day, loc)
+	}
+	return due
+}
+
+// daysBetween counts calendar days from one date to another. It works on the dates,
+// not the clock times, so a daylight-saving change cannot make a day 23 or 25 hours.
+func daysBetween(from, to time.Time) int {
+	fy, fm, fd := from.Date()
+	ty, tm, td := to.Date()
+	a := time.Date(fy, fm, fd, 0, 0, 0, 0, time.UTC)
+	b := time.Date(ty, tm, td, 0, 0, 0, 0, time.UTC)
+	return int(b.Sub(a).Hours() / 24)
+}
+
+// oldestMissed is the first due date a bill has missed, if any: on or after the day it
+// was added, after the latest date it was paid for, and already past. A bill with no
+// added date is not tracked and never counts as missed.
+func oldestMissed(e Entry, now time.Time) (time.Time, bool) {
+	if e.AddedOn == "" {
+		return time.Time{}, false
+	}
+	loc := now.Location()
+	from, err := time.ParseInLocation("2006-01-02", e.AddedOn, loc)
+	if err != nil {
+		return time.Time{}, false
+	}
+	if e.PaidFor != "" {
+		if paid, err := time.ParseInLocation("2006-01-02", e.PaidFor, loc); err == nil {
+			// Everything up to the paid date is settled, so counting starts the day after.
+			if after := paid.AddDate(0, 0, 1); after.After(from) {
+				from = after
+			}
+		}
+	}
+	year, month, _ := from.Date()
+	candidate := dueIn(year, month, e.Day, loc)
+	if candidate.Before(from) {
+		candidate = dueIn(year, month+1, e.Day, loc)
+	}
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	if candidate.Before(today) {
+		return candidate, true
+	}
+	return time.Time{}, false
+}
+
+// standing is where one bill stands today. There is one per bill: a missed bill is
+// shown as missed until it is paid, and only then does its next due date take over.
+type standing struct {
+	due      time.Time // the due date being shown
+	overdue  bool
+	daysLate int
+	paid     bool      // paid for the due date shown; never true while overdue
+	payFor   time.Time // the date ticking the bill records
+	unpayTo  time.Time // the date unticking goes back to
+}
+
+func standingOf(e Entry, now time.Time) standing {
+	next, prev := NextDue(e.Day, now), PrevDue(e.Day, now)
+	if missed, ok := oldestMissed(e, now); ok {
+		// Paying records the most recent missed date, which settles all of them.
+		return standing{due: missed, overdue: true, daysLate: daysBetween(missed, now), payFor: prev}
+	}
+	return standing{
+		due:     next,
+		paid:    e.PaidFor >= dateKey(next),
+		payFor:  next,
+		unpayTo: prev, // an unticked bill was settled up to the last due date, or it would be overdue
+	}
+}
+
+// Upcoming turns entries into the bills to show. Missed bills come first, the longest
+// overdue at the top; then bills still to pay, soonest due; then bills already paid
+// for their current due date, in the same order. A display with little room therefore
+// spends it on what needs doing. The result is never nil, so it encodes as [] and not
+// null.
 func Upcoming(entries []Entry, now time.Time) []domain.Bill {
 	upcoming := make([]domain.Bill, 0, len(entries))
 	for _, e := range entries {
-		due := NextDue(e.Day, now)
+		st := standingOf(e, now)
 		upcoming = append(upcoming, domain.Bill{
-			Name:   e.Name,
-			Amount: e.Amount,
-			DueAt:  due,
-			Paid:   e.PaidFor == dateKey(due),
+			Name:     e.Name,
+			Amount:   e.Amount,
+			DueAt:    st.due,
+			Paid:     st.paid,
+			Overdue:  st.overdue,
+			DaysLate: st.daysLate,
 		})
+	}
+	rank := func(b domain.Bill) int {
+		switch {
+		case b.Overdue:
+			return 0
+		case !b.Paid:
+			return 1
+		}
+		return 2
 	}
 	sort.SliceStable(upcoming, func(i, j int) bool {
 		a, b := upcoming[i], upcoming[j]
-		if a.Paid != b.Paid {
-			return !a.Paid
+		if rank(a) != rank(b) {
+			return rank(a) < rank(b)
 		}
 		if !a.DueAt.Equal(b.DueAt) {
 			return a.DueAt.Before(b.DueAt)
@@ -166,19 +268,35 @@ func Upcoming(entries []Entry, now time.Time) []domain.Bill {
 	return upcoming
 }
 
-// Listed is a bill as the editor sees it: what is in the file, plus the due date it
-// is counting toward right now and whether that one has been paid.
+// Listed is a bill as the editor sees it: what is in the file, plus where it stands
+// today. PayFor and UnpayTo are the dates the editor records when the bill is ticked
+// or unticked, worked out here so the editor never does date arithmetic of its own.
 type Listed struct {
 	Entry
-	Due  string `json:"due"` // YYYY-MM-DD
-	Paid bool   `json:"paid"`
+	Due      string `json:"due"` // the due date being shown, YYYY-MM-DD
+	PayFor   string `json:"payFor"`
+	UnpayTo  string `json:"unpayTo"`
+	Paid     bool   `json:"paid"`
+	Overdue  bool   `json:"overdue"`
+	DaysLate int    `json:"daysLate"`
 }
 
 func list(entries []Entry, now time.Time) []Listed {
 	listed := make([]Listed, len(entries))
 	for i, e := range entries {
-		due := dateKey(NextDue(e.Day, now))
-		listed[i] = Listed{Entry: e, Due: due, Paid: e.PaidFor == due}
+		st := standingOf(e, now)
+		l := Listed{
+			Entry:    e,
+			Due:      dateKey(st.due),
+			PayFor:   dateKey(st.payFor),
+			Paid:     st.paid,
+			Overdue:  st.overdue,
+			DaysLate: st.daysLate,
+		}
+		if !st.unpayTo.IsZero() {
+			l.UnpayTo = dateKey(st.unpayTo)
+		}
+		listed[i] = l
 	}
 	return listed
 }
@@ -261,14 +379,21 @@ func (s *Source) Entries(now time.Time) (bills []Listed, problem string) {
 // Save replaces the bills file with entries, after checking them. Invalid entries
 // are rejected without touching the file (see IsInvalid). The write is atomic, so
 // the dashboard never reads a half-written file, and the running Source picks the
-// change up like any other edit to the file.
-func (s *Source) Save(entries []Entry) error {
+// change up like any other edit to the file. A bill with no added date is stamped
+// with today's, which is when it starts to be tracked for missed due dates; one that
+// already has a date keeps it.
+func (s *Source) Save(entries []Entry, now time.Time) error {
 	if s.path == "" {
 		return errors.New("there is nowhere to save bills: no bills file is configured")
 	}
 	tidy, err := Validate(entries)
 	if err != nil {
 		return err
+	}
+	for i := range tidy {
+		if tidy[i].AddedOn == "" {
+			tidy[i].AddedOn = dateKey(now)
+		}
 	}
 	data, err := json.MarshalIndent(file{Bills: tidy}, "", "  ")
 	if err != nil {
