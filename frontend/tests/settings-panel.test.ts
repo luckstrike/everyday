@@ -78,3 +78,20 @@ test('the appearance section offers each theme and marks the current one', () =>
     assert.ok(body.includes(other));
   }
 });
+
+test('every section opens with the same header: a title, what it is for, and a rule', () => {
+  for (const [section, title, description] of [
+    ['bills', 'Bills', 'Each bill repeats every month'],
+    ['appearance', 'Appearance', 'A color for your space'],
+  ]) {
+    const body = panel(section);
+    assert.match(body, /class="settings-header/);
+    assert.match(body, new RegExp(`<h3[^>]*>${title}</h3>`));
+    assert.ok(body.includes(description), `${section} should describe itself`);
+  }
+});
+
+test('the Add bill button waits for there to be bills, so the empty state is the only offer', () => {
+  // Rendered before anything has loaded: no bills, so no header button to add one.
+  assert.doesNotMatch(panel('bills'), />Add bill</);
+});

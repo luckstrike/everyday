@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import Icon from './Icon.svelte';
+  import SettingsHeader from './SettingsHeader.svelte';
   import { ApiError, getBills, saveBills } from '../lib/api.ts';
   import {
     draftFrom,
@@ -116,12 +117,29 @@
     void persist(bills.filter((_, i) => i !== editIndex));
   }
 
+  // The Add button lives in the header once there are bills; before that the empty
+  // state offers it, so the screen never shows two.
+  const showAdd = $derived(
+    !loading && !unavailable && !editing && bills.length > 0,
+  );
+
   const stepDay = (by: number) => {
     draft.day = Math.min(31, Math.max(1, draft.day + by));
   };
 </script>
 
 <div class="bills-editor">
+  <SettingsHeader
+    title={editing ? (editIndex === null ? 'New bill' : 'Edit bill') : 'Bills'}
+    description={editing
+      ? 'What it is, how much it is, and which day of the month it is due.'
+      : 'Each bill repeats every month on its due day.'}
+  >
+    {#snippet actions()}{#if showAdd}<button class="primary" onclick={startAdd}
+          >Add bill</button
+        >{/if}{/snippet}
+  </SettingsHeader>
+
   {#if loading}
     <p class="quiet">Loading your bills…</p>
   {:else if unavailable}
@@ -134,7 +152,6 @@
         save();
       }}
     >
-      <h3>{editIndex === null ? 'New bill' : 'Edit bill'}</h3>
       <label class="field">
         <span>Name</span>
         <input
@@ -202,21 +219,16 @@
       </div>
     </form>
   {:else}
-    <div class="section-heading">
-      <div>
-        <h3>Bills</h3>
-        <p class="quiet">Each bill repeats every month on its due day.</p>
-      </div>
-      <button class="primary" onclick={startAdd}>Add bill</button>
-    </div>
     {#if problem}<p class="error" role="alert">
         The saved bills file has a problem: {problem}. Saving here replaces it.
       </p>{/if}
     {#if formError}<p class="error" role="alert">{formError}</p>{/if}
     {#if bills.length === 0}
-      <p class="empty quiet">
-        No bills yet. Add one and it appears on the dashboard.
-      </p>
+      <div class="empty-state">
+        <p class="empty-title">No bills yet</p>
+        <p class="quiet">Add one and it appears on the dashboard.</p>
+        <button class="primary" onclick={startAdd}>Add your first bill</button>
+      </div>
     {:else}
       <ul class="bill-list">
         {#each bills as bill, i}<li>
@@ -239,28 +251,27 @@
 </div>
 
 <style>
+  /* The section fills the space beside the rail, up to the same right gutter as the
+     Done button, so its header action lines up with it. */
   .bills-editor {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 24px;
     min-height: 0;
   }
-  h3 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 400;
-  }
-  .section-heading {
+  /* Nothing here yet: say so, and offer the one thing to do about it. */
+  .empty-state {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-  }
-  .section-heading p {
-    margin-top: 4px;
-  }
-  .empty {
+    gap: 8px;
     padding: 24px 0;
+  }
+  .empty-title {
+    font-size: 20px;
+  }
+  .empty-state button {
+    margin-top: 12px;
   }
   .error {
     color: oklch(78% 0.1 40);
@@ -314,7 +325,7 @@
   .bill-form {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
     max-width: 520px;
   }
   .field {
@@ -410,6 +421,27 @@
     margin-left: auto;
     color: oklch(78% 0.1 40);
     border-color: oklch(50% 0.08 40);
+  }
+  @media (max-height: 560px) {
+    .bills-editor {
+      gap: 14px;
+    }
+    .bill-form {
+      gap: 10px;
+    }
+    .field input,
+    .stepper {
+      min-height: 48px;
+    }
+    .stepper button {
+      min-height: 46px;
+    }
+    .note {
+      margin-top: -4px;
+    }
+    .bill-row {
+      min-height: 56px;
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .track,

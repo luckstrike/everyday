@@ -1,15 +1,13 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import SettingsHeader from './SettingsHeader.svelte';
   import type { Theme } from '../lib/theme.ts';
   let { theme, onchange }: { theme: Theme; onchange: (theme: Theme) => void } =
     $props();
 </script>
 
 <div class="appearance">
-  <div>
-    <h3>Appearance</h3>
-    <p class="quiet">A color for your space.</p>
-  </div>
+  <SettingsHeader title="Appearance" description="A color for your space." />
   <div class="theme-options" role="group" aria-label="Dashboard theme">
     {#each ['evergreen', 'turquoise'] as value}<button
         class:active={theme === value}
@@ -29,17 +27,13 @@
   .appearance {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    max-width: 360px;
+    gap: 24px;
   }
-  h3 {
-    margin: 0 0 4px;
-    font-size: 20px;
-    font-weight: 400;
-  }
+  /* Themes sit side by side and share the width, instead of one narrow stack. */
   .theme-options {
     display: grid;
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
   }
   .theme-options button {
     justify-content: flex-start;

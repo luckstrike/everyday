@@ -81,8 +81,8 @@
     z-index: 30;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    padding: 28px 32px;
+    gap: 32px;
+    padding: clamp(24px, 3vw, 64px);
     background: var(--bg);
     outline: none;
   }
@@ -96,17 +96,22 @@
     flex: 1 1 0;
     min-height: 0;
     display: flex;
-    gap: 28px;
+    gap: clamp(28px, 3vw, 56px);
   }
+  /* A sidebar with a rule between it and the content, wide enough that each
+     section reads as a proper button. */
   .rail {
-    flex: 0 0 180px;
+    flex: 0 0 clamp(190px, 17vw, 300px);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    padding-right: clamp(20px, 2vw, 40px);
+    border-right: 1px solid var(--line);
   }
   .rail button {
     justify-content: flex-start;
-    min-height: 52px;
+    min-height: 56px;
+    padding-inline: 20px;
     border-radius: 14px;
   }
   .rail button.active {
@@ -120,7 +125,16 @@
     min-width: 0;
     min-height: 0;
     overflow-y: auto;
-    padding: 0 4px 24px 0;
+    padding: 0 0 24px;
+  }
+  @media (max-height: 560px) {
+    .settings-panel {
+      gap: 14px;
+      padding-block: 16px;
+    }
+    .rail button {
+      min-height: 48px;
+    }
   }
   @media (max-width: 640px) {
     .settings-panel {
@@ -134,6 +148,10 @@
     .rail {
       flex: none;
       flex-direction: row;
+      padding-right: 0;
+      padding-bottom: 12px;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
     }
     .rail button {
       flex: 1;
