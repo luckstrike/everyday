@@ -3,7 +3,8 @@
   import DashboardGrid from './components/DashboardGrid.svelte';
   import Icon from './components/Icon.svelte';
   import Toast from './components/Toast.svelte';
-  import DisplaySettings from './components/DisplaySettings.svelte';
+  import SettingsPanel from './components/SettingsPanel.svelte';
+  import { hashFor, parseHash, type Section, type View } from './lib/route.ts';
   import { loadTheme, THEME_KEY, type Theme } from './lib/theme.ts';
   import { getConfig, getState } from './lib/api.ts';
   import type { Config, DashboardState } from './lib/types.ts';
@@ -15,6 +16,21 @@
     notice = $state('');
   let noticeToken = $state(0);
   let theme = $state<Theme>(loadTheme());
+  // The dashboard is home. Settings opens over it, and keeps polling underneath.
+  let view = $state<View>(parseHash(location.hash));
+  let settingsButton = $state<HTMLButtonElement>();
+  function navigate(next: View) {
+    if (next.name === 'dashboard') {
+      history.pushState(null, '', location.pathname + location.search);
+    } else {
+      location.hash = hashFor(next);
+    }
+    view = next;
+  }
+  function closeSettings() {
+    navigate({ name: 'dashboard' });
+    settingsButton?.focus();
+  }
   $effect(() => {
     document.documentElement.dataset.theme = theme;
   });
@@ -50,7 +66,10 @@
     };
     void poll();
     const clock = setInterval(() => (now = Date.now()), 1000);
+    const followAddress = () => (view = parseHash(location.hash));
+    window.addEventListener('hashchange', followAddress);
     return () => {
+      window.removeEventListener('hashchange', followAddress);
       stopped = true;
       clearTimeout(timer);
       clearInterval(clock);
@@ -64,7 +83,13 @@
     <div class="header-tools">
       {#if dashboard}<span class="header-location"
           ><Icon name="pin" size={16} />{dashboard.weather.location}</span
-        >{/if}<DisplaySettings {theme} onchange={chooseTheme} />
+        >{/if}<button
+        bind:this={settingsButton}
+        class="icon-button settings-trigger"
+        aria-label="Settings"
+        onclick={() => navigate({ name: 'settings', section: 'bills' })}
+        ><Icon name="settings" size={20} /></button
+      >
     </div>
   </header>
   <div class="board-slot">
@@ -85,5 +110,13 @@
             : 'Local display'}</span
     >
   </footer>
+  {#if view.name === 'settings'}<SettingsPanel
+      section={view.section}
+      {theme}
+      onsection={(section: Section) => navigate({ name: 'settings', section })}
+      onclose={closeSettings}
+      onchoosetheme={chooseTheme}
+      onbillschanged={refresh}
+    />{/if}
   <Toast message={notice} token={noticeToken} ondismiss={() => (notice = '')} />
 </main>

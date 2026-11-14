@@ -230,12 +230,11 @@ footer {
 footer > span {
   max-width: 65ch;
 }
-.popover {
-  background: var(--surface);
-  border: 1px solid var(--muted);
-  border-radius: 20px;
-  box-shadow: 0 16px 44px oklch(12% 0.012 160 / 0.25);
-  z-index: 30;
+.settings-trigger {
+  color: var(--muted);
+}
+.settings-trigger:hover {
+  color: var(--accent);
 }
 .loading {
   display: flex;
