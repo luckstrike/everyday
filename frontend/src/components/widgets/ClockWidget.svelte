@@ -64,10 +64,7 @@
     flex-shrink: 0;
   }
   .clock-time > span {
-    font-size: max(
-      24px,
-      min(27cqw, calc(var(--widget-content-height) - 56px), 192px)
-    );
+    font-size: max(24px, min(32cqw, calc(var(--widget-content-height) - 56px)));
   }
   @container (min-aspect-ratio: 3) {
     .clock-summary {
@@ -77,7 +74,7 @@
       gap: 12px;
     }
     .clock-time > span {
-      font-size: max(24px, min(27cqw, var(--widget-content-height), 192px));
+      font-size: max(24px, min(32cqw, var(--widget-content-height)));
     }
   }
   @container (max-width: 559px) and (max-aspect-ratio: 3) {
@@ -87,7 +84,7 @@
     .clock-time > span {
       font-size: max(
         24px,
-        min(24cqw, calc(var(--widget-content-height) - 36px), 144px)
+        min(27cqw, calc(var(--widget-content-height) - 36px))
       );
     }
   }
@@ -97,6 +94,12 @@
     }
   }
   @container (max-width: 250px) and (min-height: 101px) {
+    .clock-time > span {
+      font-size: max(
+        24px,
+        min(24cqw, calc(var(--widget-content-height) - 36px))
+      );
+    }
     .clock-date-block {
       position: relative;
       padding-right: 32px;

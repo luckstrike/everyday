@@ -27,7 +27,7 @@ Omit the actions snippet when there are no controls. Content is centered by defa
 
 Widgets decide what message to pass; the frame does not inspect data or source status. Use `message={notice ?? emptyMessage}` so a source notice takes precedence over a valid empty result. Source notices still come from `sourceNotice`, while the widget supplies its own empty-result text, such as "No upcoming events" or "No upcoming bills". Empty, unavailable, and not-connected states share presentation, not meaning.
 
-The clock shows a "Clock" heading above the time and the weekday and date.
+The clock shows a "Clock" heading above the time and the weekday and date. Digits grow with the available widget width and content height instead of stopping at a fixed font-size cap, leaving space for AM/PM and the date. Wide, short widgets keep the date beside the time; other widgets keep it underneath. Shared frame padding and header spacing do not change.
 
 The month calendar is its own widget, with Sunday-first weeks and today highlighted. It fills the shared frame's content width and height rather than capping itself at 420px. Date text and today's circle use the available cell space, constrained by both width and height and the month's actual week count, so four-, five- and six-week months all fit without clipping. When the widget is at least 280px tall it shows the whole month; shorter widgets show only the current week. The month is read-only and updates with the local date; it is distinct from the Up next widget, which shows upcoming event details.
 

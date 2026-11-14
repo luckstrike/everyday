@@ -73,6 +73,27 @@ test('a widget renders its heading before content without requiring actions', ()
   assert.ok(body.indexOf('</header>') < body.indexOf('No upcoming events.'));
 });
 
+test('the clock keeps its date and distinguishes midnight, noon and afternoon times', async () => {
+  const { default: ClockWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/ClockWidget.svelte',
+  );
+  for (const { hour, minute, clock, period } of [
+    { hour: 0, minute: 0, clock: '12:00', period: 'AM' },
+    { hour: 12, minute: 0, clock: '12:00', period: 'PM' },
+    { hour: 13, minute: 5, clock: '1:05', period: 'PM' },
+    { hour: 23, minute: 59, clock: '11:59', period: 'PM' },
+  ]) {
+    const { body } = render(ClockWidget, {
+      props: { now: new Date(2026, 8, 30, hour, minute).getTime() },
+    });
+    assert.match(body, /<h2[^>]*>Clock<\/h2>/);
+    assert.match(body, new RegExp(`>${clock}<\\/span>`));
+    assert.match(body, new RegExp(`<small[^>]*>${period}<\\/small>`));
+    assert.match(body, /Wednesday/);
+    assert.match(body, /September 30/);
+  }
+});
+
 test('multiple actions stay in the header in supplied reading order', () => {
   const actions = createRawSnippet(() => ({
     render: () => '<button>Refresh</button><button>Days</button>',
