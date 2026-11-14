@@ -171,20 +171,20 @@ for (const widget of [
   });
 }
 
-test('Bills lists each bill as a card in due-date order with its amount and how it is paid', async () => {
+test('Bills lists what is left to pay first, soonest due, then what is already paid', async () => {
   const { default: FinanceWidget } = await server.ssrLoadModule(
     '/src/components/widgets/FinanceWidget.svelte',
   );
   const now = new Date(2026, 10, 11, 12).getTime();
   const due = (month: number, date: number) =>
     new Date(2026, month - 1, date).toISOString();
-  // Deliberately out of order.
+  // Deliberately out of order. Phone is due soonest but already paid.
   const data = {
     bills: [
-      { name: 'Rent', amount: 1850, dueAt: due(12, 1), autopay: false },
-      { name: 'Phone', amount: 40, dueAt: due(11, 11), autopay: true },
-      { name: 'Electricity', amount: 84.5, dueAt: due(11, 15), autopay: true },
-      { name: 'Internet', amount: 65, dueAt: due(11, 20), autopay: true },
+      { name: 'Rent', amount: 1850, dueAt: due(12, 1), paid: false },
+      { name: 'Phone', amount: 40, dueAt: due(11, 11), paid: true },
+      { name: 'Electricity', amount: 84.5, dueAt: due(11, 15), paid: false },
+      { name: 'Internet', amount: 65, dueAt: due(11, 20), paid: false },
     ],
   };
 
@@ -196,23 +196,24 @@ test('Bills lists each bill as a card in due-date order with its amount and how 
     // Every bill is rendered, so the measuring code can decide how many fit.
     assert.equal(body.match(/class="bill[\s"]/g)?.length, 4);
     assert.doesNotMatch(body, /has-message/);
-    const order = ['Phone', 'Electricity', 'Internet', 'Rent'].map((name) =>
+    const order = ['Electricity', 'Internet', 'Rent', 'Phone'].map((name) =>
       body.indexOf(`>${name}<`),
     );
+    assert.ok(order.every((position) => position >= 0));
     assert.deepEqual(
       order,
       [...order].sort((a, b) => a - b),
     );
-    assert.ok(order.every((position) => position >= 0));
   }
   const { body } = render(FinanceWidget, {
     props: { data, status: 'live', size: 'medium', now },
   });
-  assert.match(body, /Today/);
-  assert.match(body, /\$1,850/);
+  assert.match(body, /\$1,850\.00/);
   assert.match(body, /\$84\.50/);
-  assert.equal(body.match(/Autopay on/g)?.length, 3);
-  assert.equal(body.match(/Manual payment/g)?.length, 1);
+  // Only the paid bill is marked, and nothing mentions how bills are paid.
+  assert.equal(body.match(/>Paid</g)?.length, 1);
+  assert.equal(body.match(/class="bill[^"]*\bpaid\b/g)?.length, 1);
+  assert.doesNotMatch(body, /Autopay|Manual payment/);
 });
 
 test('Up next keeps all upcoming events available for measured fitting in date order', async () => {

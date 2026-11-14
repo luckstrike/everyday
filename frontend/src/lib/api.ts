@@ -1,5 +1,5 @@
 import type { Config, DashboardState } from './types.ts';
-import type { BillEntry } from './bills-editor.ts';
+import type { BillEntry, ListedBill } from './bills-editor.ts';
 
 // A failed request. When the server explains itself (it answers {"error": "..."}),
 // the message is its explanation, which is written to be shown to a person.
@@ -34,7 +34,7 @@ export const getConfig = () => request<Config>('config');
 // The bills as written in the bills file. problem is set when that file exists but
 // cannot be read, in which case saving replaces it.
 export interface BillsResponse {
-  bills: BillEntry[];
+  bills: ListedBill[];
   problem?: string;
 }
 export const getBills = () => request<BillsResponse>('bills');

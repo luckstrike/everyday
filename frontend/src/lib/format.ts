@@ -1,8 +1,10 @@
+// Always with cents, so a column of bills lines up and "$65" never sits beside "$84.50".
 export const money = (value: number) =>
   new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: value % 1 ? 2 : 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value);
 export const time = (value: string | number) =>
   new Date(value).toLocaleTimeString('en-US', {
@@ -36,4 +38,14 @@ export function when(
   const label =
     Date.parse(event.startsAt) <= now ? 'Today' : day(event.startsAt, now);
   return `${label} · All day`;
+}
+
+// A date given as "2026-11-18" written for people, as "Nov 18". It is read as a
+// calendar date, not an instant, so no time zone can shift it to another day.
+export function shortDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
 }

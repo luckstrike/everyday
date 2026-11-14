@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
+  import Icon from '../Icon.svelte';
   import { day, money } from '../../lib/format.ts';
+  import { orderBills } from '../../lib/bills.ts';
   import { sourceNotice } from '../../lib/sources.ts';
   import { fittingItemCount } from '../../lib/fit.ts';
   import WidgetFrame from '../WidgetFrame.svelte';
@@ -25,9 +27,8 @@
       unavailableDetail: 'Check your bills file.',
     }),
   );
-  const bills = $derived(
-    [...data.bills].sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt)),
-  );
+  // What is left to pay first, then what is already paid.
+  const bills = $derived(orderBills(data.bills));
   let billList = $state<HTMLOListElement>();
   let visibleCount = $state(0);
   const message = $derived(
@@ -63,18 +64,23 @@
   <ol class="bills" class:large={size === 'large'} bind:this={billList}>
     {#each bills as bill, i}<li
         class="bill"
+        class:paid={bill.paid}
         style:visibility={i < visibleCount ? 'visible' : 'hidden'}
         aria-hidden={i >= visibleCount}
       >
         <div class="bill-main">
           <p class="bill-name" title={bill.name}>{bill.name}</p>
-          <p class="bill-due quiet" class:accent={i === 0}>
-            {day(bill.dueAt, now)} · {bill.autopay
-              ? 'Autopay on'
-              : 'Manual payment'}
+          <p class="bill-due quiet" class:accent={i === 0 && !bill.paid}>
+            {day(bill.dueAt, now)}{#if bill.paid}{' · '}<span class="paid-word"
+                >Paid</span
+              >{/if}
           </p>
         </div>
-        <p class="bill-amount">{money(bill.amount)}</p>
+        <p class="bill-amount">
+          {#if bill.paid}<Icon name="check" size={16} />{/if}{money(
+            bill.amount,
+          )}
+        </p>
       </li>{/each}
   </ol>
 </WidgetFrame>
@@ -127,9 +133,25 @@
   }
   .bill-amount {
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 18px;
     line-height: 1.25;
     font-variant-numeric: tabular-nums;
+  }
+  /* A paid bill recedes, since there is nothing left to do about it: its name and
+     amount go quiet and a tick in the accent colour says it is done. The "Paid" word
+     and the tick carry the meaning, so it never depends on colour alone. */
+  .bill.paid .bill-name,
+  .bill.paid .bill-amount {
+    color: var(--muted);
+  }
+  .paid-word {
+    color: var(--accent);
+  }
+  .bill-amount :global(svg) {
+    color: var(--accent);
   }
   .bills.large {
     gap: 10px;

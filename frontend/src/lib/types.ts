@@ -52,7 +52,7 @@ export interface DashboardState {
     alert: string;
   };
   finance: {
-    bills: { name: string; amount: number; dueAt: string; autopay: boolean }[];
+    bills: { name: string; amount: number; dueAt: string; paid: boolean }[];
   };
   calendar: {
     title: string;

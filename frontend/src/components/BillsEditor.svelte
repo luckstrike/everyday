@@ -8,12 +8,16 @@
     dueNote,
     emptyDraft,
     entryFrom,
+    groupByDay,
     ordinal,
+    toEntry,
     validateDraft,
+    withPaid,
     type BillDraft,
     type BillEntry,
+    type ListedBill,
   } from '../lib/bills-editor.ts';
-  import { money } from '../lib/format.ts';
+  import { money, shortDate } from '../lib/format.ts';
 
   // onchanged runs after bills are saved, so the dashboard can show them at once.
   let { onchanged }: { onchanged: () => void } = $props();
@@ -21,7 +25,7 @@
   let loading = $state(true);
   // Why the bills cannot be edited at all, such as sample data being shown.
   let unavailable = $state('');
-  let bills = $state<BillEntry[]>([]);
+  let bills = $state<ListedBill[]>([]);
   // Set when the bills file exists but cannot be read; saving here replaces it.
   let problem = $state('');
 
@@ -33,7 +37,7 @@
   let confirmDelete = $state(false);
   let nameInput = $state<HTMLInputElement>();
 
-  function apply(response: { bills: BillEntry[]; problem?: string }) {
+  function apply(response: { bills: ListedBill[]; problem?: string }) {
     bills = response.bills;
     problem = response.problem ?? '';
   }
@@ -100,11 +104,25 @@
       formError = message;
       return;
     }
-    const entry = entryFrom(draft);
+    // An edit keeps the bill's paid mark, so fixing a typo does not un-pay it.
+    const entry = entryFrom(
+      draft,
+      editIndex === null ? undefined : bills[editIndex],
+    );
+    const saved = bills.map(toEntry);
     void persist(
       editIndex === null
-        ? [...bills, entry]
-        : bills.map((bill, i) => (i === editIndex ? entry : bill)),
+        ? [...saved, entry]
+        : saved.map((bill, i) => (i === editIndex ? entry : bill)),
+    );
+  }
+
+  // Ticking a bill saves at once: it is a quick yes or no, not something to fill in.
+  function setPaid(index: number, paid: boolean) {
+    void persist(
+      bills.map((bill, i) =>
+        i === index ? withPaid(bill, paid) : toEntry(bill),
+      ),
     );
   }
 
@@ -114,7 +132,7 @@
       confirmDelete = true;
       return;
     }
-    void persist(bills.filter((_, i) => i !== editIndex));
+    void persist(bills.filter((_, i) => i !== editIndex).map(toEntry));
   }
 
   // The Add button lives in the header once there are bills; before that the empty
@@ -122,6 +140,10 @@
   const showAdd = $derived(
     !loading && !unavailable && !editing && bills.length > 0,
   );
+
+  // Shown by the day of the month each falls due. Edits still go by position in the
+  // saved list, which groupByDay carries along with each bill.
+  const groups = $derived(groupByDay(bills));
 
   const stepDay = (by: number) => {
     draft.day = Math.min(31, Math.max(1, draft.day + by));
@@ -192,17 +214,6 @@
         </div>
       </div>
       <p class="quiet note">{dueNote(draft.day)}</p>
-      <button
-        type="button"
-        class="switch"
-        role="switch"
-        aria-checked={draft.autopay}
-        onclick={() => (draft.autopay = !draft.autopay)}
-      >
-        <span class="track" aria-hidden="true"><span class="thumb"></span></span
-        >
-        <span>Autopay</span>
-      </button>
       {#if formError}<p class="error" role="alert">{formError}</p>{/if}
       <div class="actions">
         <button type="submit" class="primary" disabled={saving}
@@ -230,22 +241,44 @@
         <button class="primary" onclick={startAdd}>Add your first bill</button>
       </div>
     {:else}
-      <ul class="bill-list">
-        {#each bills as bill, i}<li>
-            <button class="bill-row" onclick={() => startEdit(i)}>
-              <span class="bill-main">
-                <span class="bill-name">{bill.name}</span>
-                <span class="quiet"
-                  >The {ordinal(bill.day)} · {bill.autopay
-                    ? 'Autopay on'
-                    : 'Manual payment'}</span
+      <div class="day-groups">
+        {#each groups as group (group.day)}<section
+            class="day-group"
+            aria-label={`Bills due on day ${group.day}`}
+          >
+            <h4 class="day-label">{ordinal(group.day)}</h4>
+            <ul class="bill-list">
+              {#each group.bills as { bill, index, position } (index)}<li
+                  class="bill-card"
+                  class:filled={position % 2 === 0}
+                  class:paid={bill.paid}
                 >
-              </span>
-              <span class="bill-amount">{money(bill.amount)}</span>
-              <Icon name="arrow-right" size={18} />
-            </button>
-          </li>{/each}
-      </ul>
+                  <button
+                    class="paid-toggle"
+                    role="switch"
+                    aria-checked={bill.paid}
+                    aria-label={`${bill.name}: ${bill.paid ? 'paid' : 'not paid'}`}
+                    disabled={saving}
+                    onclick={() => setPaid(index, !bill.paid)}
+                  >
+                    <span class="tick"><Icon name="check" size={14} /></span>
+                  </button>
+                  <button class="bill-row" onclick={() => startEdit(index)}>
+                    <span class="bill-main">
+                      <span class="bill-name">{bill.name}</span>
+                      <span class="bill-status"
+                        >{#if bill.paid}<span class="paid-word">Paid</span> · {shortDate(
+                            bill.due,
+                          )}{:else}Due {shortDate(bill.due)}{/if}</span
+                      >
+                    </span>
+                    <span class="bill-amount">{money(bill.amount)}</span>
+                    <Icon name="arrow-right" size={18} />
+                  </button>
+                </li>{/each}
+            </ul>
+          </section>{/each}
+      </div>
     {/if}
   {/if}
 </div>
@@ -254,6 +287,9 @@
   /* The section fills the space beside the rail, up to the same right gutter as the
      Done button, so its header action lines up with it. */
   .bills-editor {
+    /* One height for a bill row and for the date beside it, so the date is centred
+       on its first bill however the text inside wraps. */
+    --bill-row-height: 66px;
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -276,6 +312,29 @@
     color: oklch(78% 0.1 40);
     line-height: 1.4;
   }
+  /* Bills sit under the day of the month they fall due: the date down the left, the
+     bills due that day beside it. */
+  .day-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .day-group {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  .day-label {
+    margin: 0;
+    height: var(--bill-row-height);
+    display: flex;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
   .bill-list {
     list-style: none;
     margin: 0;
@@ -284,18 +343,128 @@
     flex-direction: column;
     gap: 8px;
   }
-  /* Rows echo the Bills widget's cards: outlined, every other one filled. */
+  /* A bill is a card like the Bills widget's: outlined, every other one filled. It
+     holds the paid toggle and, beside it, the row that opens the bill for editing. */
+  .bill-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: var(--bill-row-height);
+    padding: 0 6px 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  /* Every other bill in date order is filled, across the groups. */
+  .bill-card.filled {
+    background: var(--surface);
+  }
   .bill-row {
-    width: 100%;
-    min-height: 64px;
-    padding: 10px 16px;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    padding: 0 10px;
     justify-content: flex-start;
     gap: 16px;
     text-align: left;
-    border-radius: 14px;
+    border: 0;
+    border-radius: 10px;
   }
-  .bill-list li:nth-child(odd) .bill-row {
-    background: var(--surface);
+  /* The open area stays transparent on hover and focus. The card paints the highlight
+     instead, so it fills the whole row, edge to edge, with the row's own corners: a
+     highlight on the inner button would stop short of the card's edge and have
+     different corners. */
+  .bill-row:hover:not(:disabled) {
+    background: transparent;
+  }
+  .bill-card {
+    transition: background 0.12s;
+  }
+  /* Hover only where there is a pointer to hover with. On a touch screen a tap would
+     otherwise leave the row stuck highlighted. */
+  @media (hover: hover) {
+    .bill-card:has(.bill-row:hover) {
+      background: var(--surface);
+    }
+    .bill-card.filled:has(.bill-row:hover) {
+      background: color-mix(in oklch, var(--surface), var(--text) 7%);
+    }
+  }
+  /* A keyboard focus ring goes around the whole row, not the button inside it. It is
+     drawn just inside the card: the list scrolls, and anything drawn outside the
+     card's edge would be clipped there. */
+  .bill-row:focus-visible {
+    outline: none;
+  }
+  .bill-card:has(.bill-row:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bill-card {
+      transition: none;
+    }
+  }
+  /* The tick: an empty ring until the bill is paid, then filled with the theme's
+     accent. The accent already means "good" throughout, and a tick shape means it
+     without relying on colour alone. */
+  /* The button keeps a full 44px to tap, as a touch target should; only the ring
+     drawn inside it is small. */
+  .paid-toggle {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+  }
+  .paid-toggle:hover:not(:disabled) {
+    background: transparent;
+  }
+  .tick {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--muted);
+    border-radius: 50%;
+    color: transparent;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+  .paid-toggle:hover:not(:disabled) .tick {
+    color: var(--muted);
+  }
+  .paid-toggle[aria-checked='true'] .tick {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+  .paid-toggle:focus-visible {
+    outline-offset: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tick {
+      transition: none;
+    }
+  }
+  /* A paid bill recedes: its name and amount go quiet, since there is nothing left
+     to do about it, and only the "Paid" word keeps the accent. */
+  .bill-card.paid .bill-name,
+  .bill-card.paid .bill-amount {
+    color: var(--muted);
+  }
+  .bill-status {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .paid-word {
+    color: var(--accent);
   }
   .bill-main {
     flex: 1 1 0;
@@ -309,9 +478,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .bill-main .quiet {
-    font-size: 14px;
   }
   .bill-amount {
     font-size: 18px;
@@ -372,41 +538,6 @@
     font-size: 14px;
     margin-top: -6px;
   }
-  .switch {
-    justify-content: flex-start;
-    gap: 14px;
-    align-self: flex-start;
-    padding: 6px 16px 6px 8px;
-  }
-  .track {
-    width: 52px;
-    height: 30px;
-    border-radius: 15px;
-    border: 1px solid var(--line);
-    background: var(--bg);
-    position: relative;
-    transition: background 0.15s;
-  }
-  .thumb {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition:
-      transform 0.15s,
-      background 0.15s;
-  }
-  .switch[aria-checked='true'] .track {
-    background: var(--surface);
-    border-color: var(--accent);
-  }
-  .switch[aria-checked='true'] .thumb {
-    transform: translateX(22px);
-    background: var(--accent);
-  }
   .actions {
     display: flex;
     flex-wrap: wrap;
@@ -438,14 +569,22 @@
     .note {
       margin-top: -4px;
     }
-    .bill-row {
-      min-height: 56px;
+    .bills-editor {
+      --bill-row-height: 58px;
+    }
+    .day-groups {
+      gap: 10px;
     }
   }
-  @media (prefers-reduced-motion: reduce) {
-    .track,
-    .thumb {
-      transition: none;
+  /* Too narrow for a date column: the date heads its bills instead. */
+  @media (max-width: 640px) {
+    .day-group {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
+    }
+    .day-label {
+      height: auto;
+      font-size: 16px;
     }
   }
 </style>
