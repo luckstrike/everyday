@@ -4,7 +4,13 @@
   import Icon from './components/Icon.svelte';
   import Toast from './components/Toast.svelte';
   import SettingsPanel from './components/SettingsPanel.svelte';
-  import { hashFor, parseHash, type Section, type View } from './lib/route.ts';
+  import {
+    defaultSection,
+    hashFor,
+    parseHash,
+    type Section,
+    type View,
+  } from './lib/route.ts';
   import { loadTheme, THEME_KEY, type Theme } from './lib/theme.ts';
   import { getConfig, getState } from './lib/api.ts';
   import type { Config, DashboardState } from './lib/types.ts';
@@ -87,7 +93,7 @@
         bind:this={settingsButton}
         class="icon-button settings-trigger"
         aria-label="Settings"
-        onclick={() => navigate({ name: 'settings', section: 'bills' })}
+        onclick={() => navigate({ name: 'settings', section: defaultSection })}
         ><Icon name="settings" size={20} /></button
       >
     </div>

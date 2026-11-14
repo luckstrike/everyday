@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hashFor, parseHash, sections } from '../src/lib/route.ts';
+import {
+  defaultSection,
+  hashFor,
+  parseHash,
+  sections,
+} from '../src/lib/route.ts';
 
 test('the dashboard is the default, whatever the address says', () => {
   for (const hash of [
@@ -14,8 +19,8 @@ test('the dashboard is the default, whatever the address says', () => {
     assert.deepEqual(parseHash(hash), { name: 'dashboard' });
   }
 });
-test('settings opens on the first section unless a known one is named', () => {
-  const first = sections[0].id;
+test('settings opens on Bills unless a known section is named', () => {
+  const first = defaultSection;
   assert.deepEqual(parseHash('#/settings'), {
     name: 'settings',
     section: first,
@@ -39,4 +44,12 @@ test('an address always reads back as the screen it was made from', () => {
     const view = { name: 'settings', section: id } as const;
     assert.deepEqual(parseHash(hashFor(view)), view);
   }
+});
+test('the rail lists sections alphabetically, while Bills stays the default', () => {
+  const labels = sections.map((s) => s.label);
+  assert.deepEqual(
+    labels,
+    [...labels].sort((a, b) => a.localeCompare(b)),
+  );
+  assert.equal(defaultSection, 'bills');
 });
