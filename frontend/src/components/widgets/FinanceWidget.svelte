@@ -2,7 +2,7 @@
   import type { DashboardState, Size, SourceStatus } from '../../lib/types.ts';
   import Icon from '../Icon.svelte';
   import { day, money } from '../../lib/format.ts';
-  import { orderBills } from '../../lib/bills.ts';
+  import { daysLateText, orderBills, overdueCount } from '../../lib/bills.ts';
   import { sourceNotice } from '../../lib/sources.ts';
   import { fittingItemCount } from '../../lib/fit.ts';
   import WidgetFrame from '../WidgetFrame.svelte';
@@ -27,8 +27,9 @@
       unavailableDetail: 'Check your bills file.',
     }),
   );
-  // What is left to pay first, then what is already paid.
+  // What was missed first, then what is left to pay, then what is already paid.
   const bills = $derived(orderBills(data.bills));
+  const overdue = $derived(overdueCount(bills));
   let billList = $state<HTMLOListElement>();
   let visibleCount = $state(0);
   const message = $derived(
@@ -61,23 +62,37 @@
 </script>
 
 <WidgetFrame title="Bills" {message}>
+  {#snippet actions()}
+    {#if !notice && overdue > 0}<span class="overdue-chip"
+        ><Icon name="alert" size={12} />{overdue} overdue</span
+      >{/if}
+  {/snippet}
   <ol class="bills" class:large={size === 'large'} bind:this={billList}>
     {#each bills as bill, i}<li
         class="bill"
         class:paid={bill.paid}
+        class:overdue={bill.overdue}
         style:visibility={i < visibleCount ? 'visible' : 'hidden'}
         aria-hidden={i >= visibleCount}
       >
         <div class="bill-main">
           <p class="bill-name" title={bill.name}>{bill.name}</p>
-          <p class="bill-due quiet" class:accent={i === 0 && !bill.paid}>
-            {day(bill.dueAt, now)}{#if bill.paid}{' · '}<span class="paid-word"
-                >Paid</span
+          <p
+            class="bill-due quiet"
+            class:accent={i === 0 && !bill.paid && !bill.overdue}
+          >
+            {#if bill.overdue}<span class="overdue-word"
+                >{daysLateText(bill.daysLate)}</span
+              >{:else}{day(bill.dueAt, now)}{/if}{#if bill.paid}{' · '}<span
+                class="paid-word">Paid</span
               >{/if}
           </p>
         </div>
         <p class="bill-amount">
-          {#if bill.paid}<Icon name="check" size={16} />{/if}{money(
+          {#if bill.paid}<Icon
+              name="check"
+              size={16}
+            />{:else if bill.overdue}<Icon name="alert" size={16} />{/if}{money(
             bill.amount,
           )}
         </p>
@@ -152,6 +167,23 @@
   }
   .bill-amount :global(svg) {
     color: var(--accent);
+  }
+  /* A missed bill gets the warm colour on its border, the days it is late, and an icon
+     by its amount, so it reads without relying on colour alone. */
+  .bill.overdue {
+    border-color: var(--warn-line);
+  }
+  .overdue-word,
+  .bill.overdue .bill-amount :global(svg) {
+    color: var(--warn);
+  }
+  .overdue-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--warn);
   }
   .bills.large {
     gap: 10px;

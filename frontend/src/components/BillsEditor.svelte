@@ -252,12 +252,13 @@
                   class="bill-card"
                   class:filled={position % 2 === 0}
                   class:paid={bill.paid}
+                  class:overdue={bill.overdue}
                 >
                   <button
                     class="paid-toggle"
                     role="switch"
                     aria-checked={bill.paid}
-                    aria-label={`${bill.name}: ${bill.paid ? 'paid' : 'not paid'}`}
+                    aria-label={`${bill.name}: ${bill.paid ? 'paid' : bill.overdue ? 'overdue' : 'not paid'}`}
                     disabled={saving}
                     onclick={() => setPaid(index, !bill.paid)}
                   >
@@ -269,7 +270,12 @@
                       <span class="bill-status"
                         >{#if bill.paid}<span class="paid-word">Paid</span> · {shortDate(
                             bill.due,
-                          )}{:else}Due {shortDate(bill.due)}{/if}</span
+                          )}{:else if bill.overdue}<span class="overdue-word"
+                            ><Icon name="alert" size={14} />Overdue</span
+                          >
+                          · was due {shortDate(bill.due)}{:else}Due {shortDate(
+                            bill.due,
+                          )}{/if}</span
                       >
                     </span>
                     <span class="bill-amount">{money(bill.amount)}</span>
@@ -309,7 +315,7 @@
     margin-top: 12px;
   }
   .error {
-    color: oklch(78% 0.1 40);
+    color: var(--warn);
     line-height: 1.4;
   }
   /* Bills sit under the day of the month they fall due: the date down the left, the
@@ -466,6 +472,17 @@
   .paid-word {
     color: var(--accent);
   }
+  /* A missed bill says so in words and an icon as well as the warm colour, and its
+     tick ring is drawn in that colour, since the tick is what clears it. */
+  .overdue-word {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--warn);
+  }
+  .bill-card.overdue .tick {
+    border-color: var(--warn);
+  }
   .bill-main {
     flex: 1 1 0;
     min-width: 0;
@@ -549,8 +566,8 @@
   }
   .danger {
     margin-left: auto;
-    color: oklch(78% 0.1 40);
-    border-color: oklch(50% 0.08 40);
+    color: var(--warn);
+    border-color: var(--warn-line);
   }
   @media (max-height: 560px) {
     .bills-editor {

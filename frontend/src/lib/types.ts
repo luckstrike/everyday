@@ -52,7 +52,16 @@ export interface DashboardState {
     alert: string;
   };
   finance: {
-    bills: { name: string; amount: number; dueAt: string; paid: boolean }[];
+    bills: {
+      name: string;
+      amount: number;
+      dueAt: string;
+      paid: boolean;
+      // Set when the due date has passed unpaid, in which case dueAt is the oldest
+      // date missed and daysLate is how many days ago that was.
+      overdue: boolean;
+      daysLate: number;
+    }[];
   };
   calendar: {
     title: string;

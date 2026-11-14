@@ -181,10 +181,38 @@ test('Bills lists what is left to pay first, soonest due, then what is already p
   // Deliberately out of order. Phone is due soonest but already paid.
   const data = {
     bills: [
-      { name: 'Rent', amount: 1850, dueAt: due(12, 1), paid: false },
-      { name: 'Phone', amount: 40, dueAt: due(11, 11), paid: true },
-      { name: 'Electricity', amount: 84.5, dueAt: due(11, 15), paid: false },
-      { name: 'Internet', amount: 65, dueAt: due(11, 20), paid: false },
+      {
+        name: 'Rent',
+        amount: 1850,
+        dueAt: due(12, 1),
+        paid: false,
+        overdue: false,
+        daysLate: 0,
+      },
+      {
+        name: 'Phone',
+        amount: 40,
+        dueAt: due(11, 11),
+        paid: true,
+        overdue: false,
+        daysLate: 0,
+      },
+      {
+        name: 'Electricity',
+        amount: 84.5,
+        dueAt: due(11, 15),
+        paid: false,
+        overdue: false,
+        daysLate: 0,
+      },
+      {
+        name: 'Internet',
+        amount: 65,
+        dueAt: due(11, 20),
+        paid: false,
+        overdue: false,
+        daysLate: 0,
+      },
     ],
   };
 
@@ -214,6 +242,61 @@ test('Bills lists what is left to pay first, soonest due, then what is already p
   assert.equal(body.match(/>Paid</g)?.length, 1);
   assert.equal(body.match(/class="bill[^"]*\bpaid\b/g)?.length, 1);
   assert.doesNotMatch(body, /Autopay|Manual payment/);
+  // Nothing is late, so there is no chip and no warning.
+  assert.doesNotMatch(body, /overdue/i);
+});
+
+test('Bills puts missed bills first, says how late, and counts them in the header', async () => {
+  const { default: FinanceWidget } = await server.ssrLoadModule(
+    '/src/components/widgets/FinanceWidget.svelte',
+  );
+  const now = new Date(2026, 10, 14, 12).getTime();
+  const due = (month: number, date: number) =>
+    new Date(2026, month - 1, date).toISOString();
+  const data = {
+    bills: [
+      {
+        name: 'Rent',
+        amount: 1850,
+        dueAt: due(12, 1),
+        paid: false,
+        overdue: false,
+        daysLate: 0,
+      },
+      {
+        name: 'Phone',
+        amount: 40,
+        dueAt: due(11, 13),
+        paid: false,
+        overdue: true,
+        daysLate: 1,
+      },
+      {
+        name: 'Electricity',
+        amount: 84.5,
+        dueAt: due(11, 10),
+        paid: false,
+        overdue: true,
+        daysLate: 4,
+      },
+    ],
+  };
+  const { body } = render(FinanceWidget, {
+    props: { data, status: 'live', size: 'medium', now },
+  });
+
+  // Oldest miss first, then what is still to pay; each bill appears once.
+  const order = ['Electricity', 'Phone', 'Rent'].map((name) =>
+    body.indexOf(`>${name}<`),
+  );
+  assert.deepEqual(
+    order,
+    [...order].sort((a, b) => a - b),
+  );
+  assert.equal(body.match(/class="bill[^"]*\boverdue\b/g)?.length, 2);
+  assert.match(body, />4 days overdue</);
+  assert.match(body, />1 day overdue</);
+  assert.match(body, /2 overdue/);
 });
 
 test('Up next keeps all upcoming events available for measured fitting in date order', async () => {

@@ -161,10 +161,14 @@ const listed = (over: Partial<ListedBill> = {}): ListedBill => ({
   day: 18,
   due: '2026-11-18',
   paid: false,
+  overdue: false,
+  daysLate: 0,
+  payFor: '2026-11-18',
+  unpayTo: '2026-10-18',
   ...over,
 });
 
-test('ticking a bill records the due date it was paid for', () => {
+test('ticking a bill records the date the backend says settles it', () => {
   assert.deepEqual(withPaid(listed(), true), {
     name: 'Electricity',
     amount: 84.5,
@@ -172,11 +176,27 @@ test('ticking a bill records the due date it was paid for', () => {
     paidFor: '2026-11-18',
   });
 });
-test('unticking forgets the paid date, and leaves nothing behind in the file', () => {
+test('ticking a missed bill records its latest missed date, which settles every month at once', () => {
+  const missed = listed({
+    overdue: true,
+    daysLate: 35,
+    due: '2026-10-18',
+    payFor: '2026-11-10',
+  });
+  assert.equal(withPaid(missed, true).paidFor, '2026-11-10');
+});
+test('unticking goes back to the date before, so earlier paid months do not look missed', () => {
   const paid = listed({ paid: true, paidFor: '2026-11-18' });
-  const unticked = withPaid(paid, false);
+  assert.equal(withPaid(paid, false).paidFor, '2026-10-18');
+});
+test('unticking leaves no paid date at all when the backend names none', () => {
+  const unticked = withPaid(listed({ unpayTo: '' }), false);
   assert.equal('paidFor' in unticked, false);
   assert.deepEqual(unticked, { name: 'Electricity', amount: 84.5, day: 18 });
+});
+test('the added date survives ticking, so tracking never restarts', () => {
+  const entry = withPaid(listed({ addedOn: '2026-11-01' }), true);
+  assert.equal(entry.addedOn, '2026-11-01');
 });
 test('what is saved never includes the dates worked out for display', () => {
   const entry = toEntry(listed({ paid: true, paidFor: '2026-11-18' }));
@@ -204,6 +224,12 @@ test('editing a bill keeps it paid, so fixing a typo does not un-pay it', () => 
     existing,
   );
   assert.equal(fixed.paidFor, '2026-11-18');
+  // ...and keeps the day it was added, so its overdue tracking does not restart.
+  const added = entryFrom(
+    { name: 'Electricity', amount: '84.50', day: 18 },
+    { ...existing, addedOn: '2026-11-01' },
+  );
+  assert.equal(added.addedOn, '2026-11-01');
   // A brand-new bill starts unpaid.
   assert.equal(
     'paidFor' in entryFrom({ name: 'New', amount: '1', day: 1 }),

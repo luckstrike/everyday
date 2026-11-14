@@ -88,7 +88,8 @@ Bills are typed in, not fetched: there is no bank or budgeting-app connection, a
 - Every bill repeats monthly, on `day` (1 to 31). Today's date counts as still due. A bill due on the 29th, 30th or 31st falls on the last day of a shorter month.
 - `amount` is the usual amount, shown with cents. A bill whose amount changes each month shows its usual figure.
 - A bill can be ticked as paid, from the circle beside it in [Settings](#settings). That saves `paidFor`, the due date it was paid for, and the bill counts as paid only while that is the due date it is showing, so the tick clears itself when the next month's bill comes round. Paying ahead works: tick it any time before the due date.
-- On the dashboard, bills still to pay come first, soonest due, followed by the ones already paid, dimmed with a check and the word "Paid". When space is short, what is left to pay gets it.
+- A bill whose due date passes unpaid becomes **overdue**. There is no queue behind this: it is worked out each time from the bill's day of the month, its `paidFor` date, and `addedOn`, the day it was first saved. The oldest missed due date at or after `addedOn` that is later than `paidFor` is the one shown, with how many days late it is. One card per bill, however many months were missed, and it stays until ticked (or the bill is deleted), when a single tick settles every missed month. A bill only starts being tracked from the day it was saved, so a new bill is never late for dates before it existed. Bills that were in the file before this existed have no `addedOn` and are not tracked until their next save from Settings.
+- On the dashboard, overdue bills come first (the longest overdue on top), then bills still to pay, soonest due, then the ones already paid, dimmed with a check and the word "Paid". An overdue bill replaces its next-due card rather than adding a second one, and a quiet "N overdue" count sits in the widget header. When space is short, what needs doing gets it.
 - Files from before this change may carry an `autopay` field per bill. It is read and ignored, and the next save from Settings leaves it out.
 - The file is re-read whenever it changes, so edits appear within a few seconds with no restart. Leaving the file out shows "No bills yet". A mistake in it (a misspelled field, a day outside 1 to 31, a negative amount) shows "Bills unavailable" on the display and logs the exact problem once.
 - The widget shows as many whole cards as fit.
@@ -115,7 +116,7 @@ The MVP is a landscape-only display with one fixed layout and five widgets:
 | Month calendar | The current month, or only the current week when the widget is short |
 | Weather | Current conditions with a five-day forecast (today plus four days), low → high temperature ranges, an hourly view via the **Days / Hours** button, and any alert |
 | Up next | Your next calendar event |
-| Bills | Your recurring bills as cards, what is left to pay first and what is already paid after, each with its amount and due date |
+| Bills | Your recurring bills as cards: overdue first, then what is left to pay, then what is already paid, each with its amount and due date |
 
 Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Tap the settings gear beside **Dallas, TX** to open [Settings](#settings), where you can edit your bills and choose **Evergreen** or **Turquoise**. The theme applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
 
