@@ -265,7 +265,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-    padding: 24px 0;
   }
   .empty-title {
     font-size: 20px;
