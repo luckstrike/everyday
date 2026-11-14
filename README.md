@@ -1,210 +1,180 @@
 # Everyday
 
-A personal wall dashboard built with Svelte 5, TypeScript, Vite, and a small Go REST service. The ambient evergreen UI follows the approved Paper landscape prototype. Weather is **live** (Open-Meteo, no API key). Calendar reads from Google Calendar once you [connect it](#connect-google-calendar). Bills come from a small [bills file](#bills) you edit yourself. Set `EVERYDAY_MOCK=1` to fill the display with made-up data instead.
+A quiet little dashboard for the things you check every day: the time, the weather, what's coming up, and which bills are due.
 
-## Run on macOS
+Built with **Svelte + TypeScript + Go**, for a browser on your desk today and a Raspberry Pi on the wall next. No database, paid dashboard service, or touchscreen needed.
 
-Requires Node.js 22.18+ (24 LTS recommended), npm, and Go 1.22+.
+![Everyday in the Evergreen theme: a clock, five-day weather, month calendar, fictional events, and sample bills](docs/screenshots/dashboard.png)
+
+*Screenshots use built-in mock data. All events, bill names, and amounts are fictional; no personal calendar entries or holidays are included.*
+
+> **Local-first, for now.** Run the browser and server on the same computer. There is no login yet: don't publish Everyday to the internet or expose it to your network. The Pi instructions keep everything on the Pi.
+
+## Start here
+
+- **Try it on your computer:** [Quick start](#quick-start).
+- **Put it on a display:** [Do I need a touchscreen?](#do-i-need-a-touchscreen) and the [Raspberry Pi guide](docs/raspberry-pi.md).
+- **Customize it:** [Make it yours](#make-it-yours).
+- **Dig into the details:** [Configuration and technical reference](docs/reference.md).
+
+## What's on the dashboard?
+
+| Widget | At a glance |
+| --- | --- |
+| Clock | Local time, weekday, and date |
+| Weather | Current conditions, weather icons, and low → high temperatures; switch between daily and hourly forecasts |
+| Calendar | The current month, or the current week when space is tight |
+| Up next | Upcoming events from Google Calendar |
+| Bills | Monthly reminders, overdue indicators, and paid marks |
+
+The layout is fixed and landscape-only. Widgets adapt to their space: the forecast shows up to five days, and lists show as many whole cards as fit. Bills are reminders you enter yourself, not bank data or automatic payments.
+
+## Quick start
+
+### 1. Get the tools
+
+You'll need **Git**, **Make**, **Node.js 22.18+** with npm, and **Go 1.22+**. Node 24 LTS is a suitable choice. Check your installed versions:
 
 ```sh
-make install
-make dev
+git --version
+make --version
+node --version
+npm --version
+go version
 ```
 
-Open **http://127.0.0.1:5173**. The API binds to **127.0.0.1:8080**. Both processes stay on loopback; Ctrl-C stops both. Ports are fixed so conflicts fail visibly. `GO=/absolute/path/to/go make dev` selects another Go installation.
+On macOS, if you already use Homebrew, `brew install node@24 go` installs the language tools; follow Homebrew's instructions to put Node on your PATH. Git and Make are available through Apple's Command Line Tools (`xcode-select --install`). Otherwise, use the official [Node.js](https://nodejs.org/en/download) and [Go](https://go.dev/doc/install) installation guides.
 
-Use the browser's fullscreen command to fill the display. For a wall session, prevent macOS display sleep through system settings or `caffeinate -d` in another terminal.
-
-### Run the built dashboard
-
-For normal use rather than development:
+### 2. Download and run
 
 ```sh
+git clone https://github.com/luckstrike/everyday.git
+cd everyday
+make install
 make run
 ```
 
-This builds the frontend and Go binary, then runs **one Go HTTP server** at **http://127.0.0.1:8080**, serving both the built dashboard and `/api` on the same origin. Vite is not running. Stop `make dev` first if it is running: both modes use port 8080, and a conflict fails visibly. Ctrl-C stops the server, allowing active requests up to five seconds to finish. The server remains localhost-only; this does not enable access from other devices or change the editing protections.
+Open **http://127.0.0.1:8080** in a browser **on that same computer**. Leave the terminal running; **Ctrl-C** stops the server.
 
-To build once and start without rebuilding:
+`make run` builds the frontend and Go binary, then starts one Go server for both the dashboard and API. Vite isn't running. The first build may take a little longer.
+
+Weather starts with Dallas, TX. It's normal for Up next to be unconnected and Bills to be empty until you set them up. You don't need Google credentials just to try it.
+
+### Just looking? Try the demo
+
+Stop the server first, then run:
 
 ```sh
-make build
-./build/everyday -web-dir ./frontend/dist
+EVERYDAY_MOCK=1 make run
 ```
 
-The binary and the built frontend directory are the runtime artifacts; Node.js and Go are needed to build them, but neither is needed to run them. Keep the whole frontend directory, including `assets/`, beside the binary or pass its location with `-web-dir`. The path is relative to the working directory unless absolute. Missing `index.html` is a startup error. Settings addresses also work here, for example `http://127.0.0.1:8080/#/settings/location`.
+Open the same address for sample weather, fictional events, and sample bills—the data used in these screenshots. Bills and location editing are disabled in demo mode. Stop it and run plain `make run` to return to live sources; if you previously exported `EVERYDAY_MOCK`, unset it first.
 
-Use `make dev` for hot reload. Omitting `-web-dir` keeps the Go server API-only, as used by `make backend` and the development runner. `GO=/absolute/path/to/go make run` selects the build's Go installation, just as with `make dev`.
+## Make it yours
 
-## Configure
+Click the **gear** in the top-right corner to open Settings. Choose **Done** or press **Escape** to return; Settings also closes after 90 seconds without activity.
 
-Settings come from three places; later ones win: built-in defaults, then the config file, then environment variables. The config file holds no secrets. It is `everyday/config.json` in your user config directory (on macOS, `~/Library/Application Support/everyday/config.json`) unless `EVERYDAY_CONFIG` names another path. Every field is optional, and a misspelled field is an error:
+### Choose a color
 
-```json
-{
-  "location": { "name": "Austin, TX", "latitude": 30.2672, "longitude": -97.7431 },
-  "google": {
-    "exclude": ["Birthdays"],
-    "calendars": ["primary", "family@example.com"]
-  }
-}
-```
+Open **Settings → Appearance** and pick one of eight themes. The choice is saved in that browser, so choose it again when you move to a different device or browser profile.
 
-| File field | Meaning |
-| --- | --- |
-| `location` | Weather location: a display name and coordinates, all three required. The default is Dallas, TX. |
-| `google.exclude` | Calendars to leave out, by name or ID, ignoring case. Use it to drop noisy ones such as Birthdays. |
-| `google.calendars` | Show only these calendar IDs. Normally leave this out; see [which calendars show](#which-calendars-show). |
+![Appearance settings with eight color themes and a left-hand navigation rail](docs/screenshots/appearance.png)
 
-| Environment variable | Meaning |
-| --- | --- |
-| `EVERYDAY_CONFIG` | Path of the config file. A missing file here is an error. |
-| `EVERYDAY_LOCATION`, `EVERYDAY_LAT`, `EVERYDAY_LON` | Weather location, overriding the file. Set all three or none. |
-| `EVERYDAY_GOOGLE_CALENDARS` | Comma-separated calendar IDs, overriding the file's `google.calendars`. |
-| `EVERYDAY_GOOGLE_CREDENTIALS` | Path of the Google credentials file. Defaults to `everyday/google.json` in your user config directory. |
-| `EVERYDAY_BILLS` | Path of the bills file. Defaults to `everyday/bills.json` in your user config directory. |
-| `EVERYDAY_MOCK` | `1` or `true` serves mock data for every widget instead of live sources. Off by default. |
+### Set your weather location
 
-Invalid settings stop the server at startup with a message naming the problem.
+Click the location name above the dashboard, or open **Settings → Location**. Search for a city or postal code, choose the matching region, and save. Weather refreshes without a restart; no weather API key is needed for this non-commercial project.
 
-To change weather location without a restart, tap the location name on the dashboard or open **Settings → Location** (`#/settings/location`). Search for a city or postal code, select the result with the right region/country, then save. The backend uses Open-Meteo's geocoding API (location data from GeoNames), which needs no API key for this non-commercial dashboard. The selected name and coordinates are written atomically to the config file, preserving Google settings, and weather reloads immediately. Old-location forecasts are cleared, including late responses from in-flight requests. A lookup failure leaves the saved location unchanged; a failed forecast is retried automatically. This setting changes weather only, not the clock or calendar timezone.
+This changes the **weather location only**. The clock and event times use the browser's timezone, so set the display computer's timezone correctly too. Environment-variable location overrides lock the location editor; see the [configuration reference](docs/reference.md#configure).
 
-Environment variables retain priority: when the location variables are set, Location explains that they must be removed and the server restarted before editing here. Location editing is disabled in mock mode. Editing the config file by hand still requires restarting the server to load the change.
+### Add your bills
 
-## Connect Google Calendar
+In **Settings → Bills**, add a name, monthly due day, and amount—or choose **Amount varies**. Use the circle next to a bill to mark it paid for its displayed due date. Paid marks reset as the next month's bill comes around; unpaid tracked bills stay overdue until settled.
 
-The backend reads your calendar through Google's API, and the browser never sees any credentials. Setup is a one-time job in Google's console plus one sign-in:
+Everything is saved locally. No banking connection is involved, and marking a bill paid here does **not** pay it. See [bill behavior and file format](docs/reference.md#bills) for month-end handling and overdue details.
 
-1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and enable the **Google Calendar API**.
-2. Configure the OAuth consent screen (Google Auth Platform): user type **External**, any app name, your own email. Add the scopes `https://www.googleapis.com/auth/calendar.events.readonly` (read events) and `https://www.googleapis.com/auth/calendar.calendarlist.readonly` (list which calendars you have). Neither can change anything.
-3. **Publish the app** (status "In production"). In "Testing" status Google expires the sign-in after 7 days. An unverified personal app is fine; at sign-in Google warns that it hasn't verified the app, so choose Advanced and continue.
-4. Create credentials: **OAuth client ID**, application type **Desktop app**. Google may show the client secret only once, so save the ID and secret in a JSON file outside this repository: `{"client_id": "...", "client_secret": "..."}`. Google's downloaded `client_secret_*.json` also works, if the client is a Desktop app (its JSON starts with `"installed"`; a Web application client starts with `"web"` and will not work).
-5. Sign in. A browser opens; approve read-only access to your events:
+### Connect Google Calendar (optional)
+
+This is the one step that takes a little patience: you create your own Google OAuth client and grant read-only calendar access.
+
+1. Follow the [Google Calendar setup guide](docs/reference.md#connect-google-calendar) to create a **Desktop app** client and save its JSON file outside this repository.
+2. From the project directory, run:
 
    ```sh
-   make google-auth ARGS="-client-file /path/to/client.json"
+   make google-auth ARGS="-client-file /absolute/path/to/client.json"
    ```
 
-6. Restart `make dev`. The Up next widget now shows your events.
+3. Approve access in the browser, then restart the dashboard server.
 
-Sign-in saves the client and a refresh token to `everyday/google.json` in your user config directory, readable only by you. Move that file to the Raspberry Pi to deploy there. If Google ever revokes access, the server logs it and the widget says unavailable. Sign in again with a plain `make google-auth`, with no arguments, which reuses the saved client.
+Everyday follows the calendars selected in Google Calendar's sidebar. See [which calendars show](docs/reference.md#which-calendars-show) to exclude or pin specific calendars. Google's Testing mode can cause sign-in to expire after seven days for these permissions; the setup guide explains this.
 
-### Which calendars show
+## Do I need a touchscreen?
 
-By default the dashboard mirrors Google Calendar: it shows every calendar ticked in Google Calendar's sidebar, including shared calendars and subscribed ones such as your country's holidays. To change what appears, tick or untick a calendar in Google Calendar (or the Google Calendar app); the dashboard follows within about five minutes. The server logs the calendars it is showing whenever that set changes.
+**Nope. Start with a monitor or TV you already have.** Touch is optional; a mouse and keyboard work too. A display being LED or LCD doesn't tell you whether it supports touch.
 
-- To drop a calendar that is ticked but unwanted, add its name or ID to `google.exclude` in the config file.
-- To pin an exact list that ignores what is ticked, set `google.calendars` (or `EVERYDAY_GOOGLE_CALENDARS`) to calendar IDs, found under each calendar's settings as **Calendar ID**.
-- If one calendar cannot be read, it is skipped with a warning in the log and the others still show. Listing calendars needs the second permission above; if you signed in before it existed, run `make google-auth` again.
-
-## Bills
-
-Bills are typed in, not fetched: there is no bank or budgeting-app connection, and the display shows only what is due, never spending. They live in `everyday/bills.json` in your user config directory (on macOS, `~/Library/Application Support/everyday/bills.json`), or wherever `EVERYDAY_BILLS` points:
-
-```json
-{
-  "bills": [
-    { "name": "Rent", "amount": 1850, "day": 1 },
-    { "name": "Internet", "amount": 65, "day": 15 }
-  ]
-}
-```
-
-- Every bill repeats monthly, on `day` (1 to 31). Today's date counts as still due. A bill due on the 29th, 30th or 31st falls on the last day of a shorter month.
-- `amount` is the usual amount, shown with cents. Leave it out for a bill with no fixed amount, such as a credit card: its card says "Due" where the figure would be (and nothing once it is paid), and it is otherwise a bill like any other, including going overdue. An amount of 0 means the same as none.
-- A bill can be ticked as paid, from the circle beside it in [Settings](#settings). That saves `paidFor`, the due date it was paid for, and the bill counts as paid only while that is the due date it is showing, so the tick clears itself when the next month's bill comes round. Paying ahead works: tick it any time before the due date.
-- A bill whose due date passes unpaid becomes **overdue**. There is no queue behind this: it is worked out each time from the bill's day of the month, its `paidFor` date, and `addedOn`, the day it was first saved. The oldest missed due date at or after `addedOn` that is later than `paidFor` is the one shown, with how many days late it is. One card per bill, however many months were missed, and it stays until ticked (or the bill is deleted), when a single tick settles every missed month. A bill only starts being tracked from the day it was saved, so a new bill is never late for dates before it existed. Bills that were in the file before this existed have no `addedOn` and are not tracked until their next save from Settings.
-- On the dashboard, overdue bills come first (the longest overdue on top), then bills still to pay, soonest due, then the ones already paid, dimmed with a check and the word "Paid". An overdue bill replaces its next-due card rather than adding a second one, and a quiet "N overdue" count sits in the widget header. When space is short, what needs doing gets it.
-- Files from before this change may carry an `autopay` field per bill. It is read and ignored, and the next save from Settings leaves it out.
-- The file is re-read whenever it changes, so edits appear within a few seconds with no restart. Leaving the file out shows "No bills yet". A mistake in it (a misspelled field, a day outside 1 to 31, a negative amount) shows "Bills unavailable" on the display and logs the exact problem once.
-- The widget shows as many whole cards as fit.
-- You can edit the file by hand or from [Settings](#settings); both change the same file.
-
-## Settings
-
-The gear beside the location opens Settings as a full screen over the dashboard, which keeps updating underneath. Tap the location name to open Location directly. It has three sections:
-
-- **Bills**: add, edit and delete bills, listed by the day of the month they fall due, with bills that share a day grouped together. Each bill has a name, an amount (or an "Amount varies" switch, for a card with no fixed amount), a due day (a stepper, so nothing needs typing), and a circle to tick when it is paid. A change is saved as one whole file, written atomically, and shows on the dashboard at once. If the bills file has a mistake in it, Settings shows what it is and lets you replace the file.
-- **Appearance**: the theme.
-- **Location**: search for a city or postal code, choose a matching region/country, then save the weather location. Search happens on submission, not on every keystroke.
-
-Done or Escape closes it, and it closes itself after 90 seconds without a touch, so it never stays open on the wall. It has an address (`http://127.0.0.1:5173/#/settings/bills`), so a section can be opened directly.
-
-There is no login yet, so Settings only works from the machine the dashboard runs on. The endpoints that change things (`PUT /api/bills`, `PUT /api/location`) reject a request unless it is addressed to `localhost`, `127.0.0.1` or `::1`, is JSON, and either names no origin or names this server. That keeps another web page in your browser from editing your bills, and it keeps the dashboard from being edited from elsewhere on your network by accident. If you put a reverse proxy in front of the server, it must pass the original `Host` header through. A real login is planned and will replace these checks.
-
-## What it shows
-
-The MVP is a landscape-only display with one fixed layout and five widgets:
-
-| Widget | Shows |
-| --- | --- |
-| Clock | Time, weekday, and date |
-| Month calendar | The current month, or only the current week when the widget is short |
-| Weather | Current conditions with a five-day forecast (today plus four days), low → high temperature ranges, an hourly view via the **Days / Hours** button, and any alert |
-| Up next | Your next calendar event |
-| Bills | Your recurring bills as cards: overdue first, then what is left to pay, then what is already paid, each with its amount and due date |
-
-Each widget adapts to the space it receives. Smaller sizes show less detail instead of scaling content down. Tap the settings gear beside **Dallas, TX** to open [Settings](#settings), where you can edit your bills, choose a weather location, and choose a colour theme: **Amber**, **Evergreen**, **Graphite**, **Indigo**, **Ocean**, **Plum**, **Stone** or **Turquoise**. The theme applies immediately and persists in this browser. Notices use a shared toast that dismisses after 4.5 seconds.
-
-## Architecture
+For a first Pi experiment, use a landscape HDMI display, the right cable for your Pi, and a keyboard/mouse for setup. Open Everyday in the Pi's browser and use fullscreen. You can leave the dashboard showing without an input device, but you'll need a way to interact when changing Settings or marking bills paid.
 
 ```text
-Go sources (live weather, optional mock) → normalized REST state
-    → frontend polling → fixed layout → size-aware Svelte widgets
+Raspberry Pi
+  ├── Go server: 127.0.0.1:8080
+  └── Chromium → the same local address → HDMI monitor / TV
 ```
 
-Widgets receive props and never fetch APIs. Go owns the mock source data. The frontend owns the fixed layout, which is a list of placements on a 24 by 24 grid in `frontend/src/lib/layout.ts`.
+**[Follow the Raspberry Pi guide →](docs/raspberry-pi.md)**
 
-| File or directory | Responsibility |
+The app has been developed and checked on macOS. The Pi guide is an initial manual setup path, **not a claim of hardware-tested support**. Start at a desk before buying a dedicated display or mounting anything.
+
+## Your data and backups
+
+Bills, location settings, and Google credentials live outside the repository:
+
+| System | Default directory |
 | --- | --- |
-| `backend/internal/domain` | Normalized data models |
-| `backend/internal/weather` | Open-Meteo client and the cache that keeps the last good forecast |
-| `backend/internal/bills` | The bills file: reading it, saving it, and when each bill is next due |
-| `backend/internal/fileutil` | Writing a file so a half-written one is never seen |
-| `backend/internal/gcal` | Google OAuth sign-in, the Calendar client, and the event cache |
-| `backend/cmd/googleauth` | The one-time `make google-auth` sign-in command |
-| `backend/internal/mock` | Independent mock sources, used only with `EVERYDAY_MOCK` |
-| `backend/internal/config` | Environment settings |
-| `backend/internal/api` | REST handlers |
-| `frontend/src/App.svelte` | Polling lifecycle, theme, header and footer |
-| `frontend/src/lib/layout.ts` | The fixed layout and grid helpers |
-| `frontend/src/lib/month.ts` | Month grid and current-week calculation |
-| `frontend/src/components` | The grid, widgets, the settings panel, toast |
+| macOS | `~/Library/Application Support/everyday/` |
+| Linux / Raspberry Pi OS | `~/.config/everyday/` (or `$XDG_CONFIG_HOME/everyday/` when set) |
 
-| Method | Path | Result |
-| --- | --- | --- |
-| GET | `/api/state` | Normalized state, with a `sources` status (`live`, `mock`, `unavailable`, `unconfigured`) for each section |
-| GET | `/api/config` | Polling interval |
-| GET | `/api/bills` | The bills as written in the file, in file order, plus a `problem` if the file cannot be read |
-| PUT | `/api/bills` | Replaces the bills, with the new list returned. Invalid bills get a 400 that says why. |
-| GET | `/api/location` | Saved weather location, whether it is editable, and why not if locked |
-| GET | `/api/locations?q=…` | Up to eight matching city/postal-code locations with coordinates, through Open-Meteo |
-| PUT | `/api/location` | Saves a name, latitude and longitude; returns saved settings and starts a weather refresh |
+| File | Keep it for… |
+| --- | --- |
+| `config.json` | Saved weather location and calendar filtering |
+| `bills.json` | Bills and their paid/tracking state |
+| `google.json` | Google sign-in credentials—**keep this private** |
 
-Polling uses a five-second interval with an eight-second timeout. Saves request an immediate refresh; any older in-flight response is ignored. Timers clean up on unmount. The last successful state remains visible during outages; the footer reports delay or connection failure. The backend contacts Open-Meteo every 15 minutes (retrying after a minute on failure), not on each poll. A failed refresh keeps the last forecast, which is dropped after an hour so stale weather is never shown as current. Google Calendar is read every 5 minutes (retrying after a minute on failure), and its events are dropped after 30 minutes without a successful refresh. In mock mode, dates are anchored to backend startup rather than advancing on each poll.
+Files appear as you use each feature; not every setup has all three. See [path overrides](docs/reference.md#configure) if you've customized their locations. Stop the server before copying files for backup or restore, and keep the Google file out of Git, screenshots, and public backups. The theme is stored separately in your browser.
 
-Svelte is the only frontend runtime dependency. Go uses its standard library. No layout libraries, network fonts, databases, or cloud hosting are used. Weather and city search use Open-Meteo through the backend.
+## Everyday commands
 
-## Verification
+Run these from the project directory:
 
-```sh
-make check   # Go race tests + vet, Svelte/TS checks, Node behavioral tests
-make build   # Go binary in build/everyday, frontend build in frontend/dist
-```
+| Command | Use it for |
+| --- | --- |
+| `make install` | Install the locked frontend dependencies |
+| `make run` | Build and run the local dashboard at port 8080 |
+| `make build` | Build `build/everyday` and `frontend/dist/` without starting them |
+| `./build/everyday -web-dir ./frontend/dist` | Start an existing build without rebuilding |
+| `make dev` | Frontend hot reload at port 5173, with the API at port 8080 |
+| `make google-auth` | Sign in again using a previously saved Google client |
+| `make check` | Go race tests and vet, Svelte/TypeScript checks, and frontend behavior tests |
 
-Format with `cd frontend && npm run format`.
+Don't run `make dev` and `make run` together: both need port 8080. The binary needs the complete `frontend/dist/` folder, including `assets/`. Node and Go are build tools, not runtime requirements for an existing build on a compatible OS/CPU. Use `GO=/absolute/path/to/go make run` to select another Go installation.
 
-Tests cover that the fixed layout stays inside the grid without overlapping, month dates and the current-week row, that mock dates stay stable while polling, Open-Meteo parsing, the bills file and due-date arithmetic (month ends, leap years, year rollover), that the weather and calendar caches keep the last good data through failures, the Google sign-in flow (PKCE, state checks, token refresh), and calendar event handling (all-day events lead their day, cancelled and declined events, merged calendars, mirroring and excluding calendars, one broken calendar being skipped), and the config file. The intended LCD still needs a physical legibility and long-running check.
+## Something not working?
 
-Use `make run` for a production-style local session with Go serving the built frontend and API together. Missing assets and unknown API routes return 404 rather than the app HTML; directory listings and hidden files are not served. HTML is not stored in the browser cache, and other assets revalidate when requested. The intended LCD still needs a physical legibility check and an overnight reliability run before appliance deployment.
+| Symptom | Try this |
+| --- | --- |
+| Missing tool / unsupported Node version | Check the versions in step 1; reopen your terminal after installing tools |
+| `address already in use` | Stop the other Everyday server with Ctrl-C; development and built modes share port 8080 |
+| Missing frontend / `index.html` | Run `make build`, then start from the project directory with the documented `-web-dir` |
+| Browser cannot connect | Keep the server running and use the browser on the same computer; `127.0.0.1` isn't your Pi's network address |
+| Weather or calendar unavailable | Check internet access and the server log; failed refreshes retry automatically |
+| Google Calendar stops working | Re-run `make google-auth`, restart the server, and check OAuth publishing status in the setup guide |
+| Bills unavailable | Open Settings → Bills for the file error; back up an existing file before replacing it |
+| Wrong clock or event time | Check the display computer's date, time, and timezone—not the weather location |
 
-## After the MVP
+On macOS, adjust display sleep settings or run `caffeinate -d` in another terminal for a wall session. On the Pi, see the [display checklist](docs/raspberry-pi.md#before-you-call-it-a-wall-appliance).
 
-Removed from the prototype and preserved in the git tag `prototype-v0`:
+## What's next?
 
-- Widget and layout editing (moving and resizing widgets)
-- Multiple named boards and portrait layouts
-- Sports and Around Dallas widgets (V1+ or V2)
-- The priority and attention system
+The `v1.0.0` tag marks the first local dashboard release. These setup guides document that local-first app; they don't introduce login, cloud hosting, or automatic Pi installation.
 
-Editing calendars in Settings, a login so Settings can be used from other devices, iCloud calendars (Google only for now), and Raspberry Pi deployment also remain future work.
+Next comes real-world use: an overnight run, network recovery, restart/persistence checks, and physical display legibility. Remote access/authentication, calendar selection in Settings, and a verified Pi appliance setup remain future work.
+
+For architecture, API endpoints, configuration, and deferred prototype features, see the [technical reference](docs/reference.md#architecture).
