@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"everyday/backend/internal/domain"
+	"everyday/backend/internal/fileutil"
 )
 
 // Entry is one bill as written in the file. Every bill repeats monthly.
@@ -46,6 +47,19 @@ func DefaultFile() string {
 	return filepath.Join(dir, "everyday", "bills.json")
 }
 
+// invalidError is a problem with the content of the bills, as opposed to a problem
+// reading or writing the file. Callers can tell the two apart with IsInvalid.
+type invalidError string
+
+func (e invalidError) Error() string { return string(e) }
+
+// IsInvalid reports whether err says the bills themselves are wrong, so the person
+// who supplied them can fix it.
+func IsInvalid(err error) bool {
+	var invalid invalidError
+	return errors.As(err, &invalid)
+}
+
 // Parse reads and validates the contents of a bills file. A misspelled field is an
 // error rather than silently ignored.
 func Parse(data []byte) ([]Entry, error) {
@@ -53,20 +67,28 @@ func Parse(data []byte) ([]Entry, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&f); err != nil {
-		return nil, err
+		return nil, invalidError(err.Error())
 	}
-	for i, e := range f.Bills {
+	return Validate(f.Bills)
+}
+
+// Validate checks entries and returns them tidied (names trimmed). It does not
+// change the slice it is given.
+func Validate(entries []Entry) ([]Entry, error) {
+	tidy := make([]Entry, len(entries))
+	for i, e := range entries {
 		switch {
 		case strings.TrimSpace(e.Name) == "":
-			return nil, fmt.Errorf("bill %d has no name", i+1)
+			return nil, invalidError(fmt.Sprintf("bill %d has no name", i+1))
 		case e.Day < 1 || e.Day > 31:
-			return nil, fmt.Errorf("bill %q: day must be 1 to 31, got %d", e.Name, e.Day)
+			return nil, invalidError(fmt.Sprintf("bill %q: day must be 1 to 31, got %d", e.Name, e.Day))
 		case math.IsNaN(e.Amount) || math.IsInf(e.Amount, 0) || e.Amount < 0:
-			return nil, fmt.Errorf("bill %q: amount must be zero or more", e.Name)
+			return nil, invalidError(fmt.Sprintf("bill %q: amount must be zero or more", e.Name))
 		}
-		f.Bills[i].Name = strings.TrimSpace(e.Name)
+		e.Name = strings.TrimSpace(e.Name)
+		tidy[i] = e
 	}
-	return f.Bills, nil
+	return tidy, nil
 }
 
 // NextDue is the date a bill due on the given day of the month is next due, counting
@@ -163,6 +185,47 @@ func (s *Source) Bills(now time.Time) ([]domain.Bill, domain.SourceStatus) {
 		return empty, domain.SourceUnavailable
 	}
 	return Upcoming(s.entries, now), domain.SourceLive
+}
+
+// Entries returns the bills as written in the file, in file order, for editing. A
+// missing file has no entries and no problem. A file that cannot be read or is
+// invalid has no entries and a problem describing why, so the editor can say so and
+// still let the person replace it.
+func (s *Source) Entries() (entries []Entry, problem string) {
+	if s.path == "" {
+		return []Entry{}, ""
+	}
+	data, err := os.ReadFile(s.path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return []Entry{}, ""
+	}
+	if err != nil {
+		return []Entry{}, err.Error()
+	}
+	entries, err = Parse(data)
+	if err != nil {
+		return []Entry{}, err.Error()
+	}
+	return entries, ""
+}
+
+// Save replaces the bills file with entries, after checking them. Invalid entries
+// are rejected without touching the file (see IsInvalid). The write is atomic, so
+// the dashboard never reads a half-written file, and the running Source picks the
+// change up like any other edit to the file.
+func (s *Source) Save(entries []Entry) error {
+	if s.path == "" {
+		return errors.New("there is nowhere to save bills: no bills file is configured")
+	}
+	tidy, err := Validate(entries)
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(file{Bills: tidy}, "", "  ")
+	if err != nil {
+		return err
+	}
+	return fileutil.WriteAtomic(s.path, append(data, '\n'), 0o600)
 }
 
 func (s *Source) load() ([]Entry, error) {

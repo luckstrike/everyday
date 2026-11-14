@@ -37,7 +37,9 @@ func main() {
 		if calendar := connectGoogleCalendar(ctx, cfg); calendar != nil {
 			opts.Calendar = calendar
 		}
-		opts.Finance = billsSource(cfg)
+		source := billsSource(cfg)
+		opts.Finance = source
+		opts.BillsStore = source
 	}
 
 	server := &http.Server{Addr: "127.0.0.1:8080", Handler: api.New(opts), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}

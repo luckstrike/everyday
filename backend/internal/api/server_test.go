@@ -2,11 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"everyday/backend/internal/bills"
 	"everyday/backend/internal/domain"
 )
 
@@ -142,6 +145,167 @@ func TestFinanceStatusesPassThroughAndKeepListsAsLists(t *testing.T) {
 		if !strings.Contains(body, `"bills":[]`) {
 			t.Fatalf("a nil list would encode as null and crash the frontend: %s", body)
 		}
+	}
+}
+
+// fakeStore is an in-memory bills store for the editing endpoints.
+type fakeStore struct {
+	entries []bills.Entry
+	problem string
+	saveErr error
+	saves   int
+}
+
+func (f *fakeStore) Entries() ([]bills.Entry, string) {
+	if f.entries == nil {
+		return []bills.Entry{}, f.problem
+	}
+	return f.entries, f.problem
+}
+
+func (f *fakeStore) Save(entries []bills.Entry) error {
+	f.saves++
+	if f.saveErr != nil {
+		return f.saveErr
+	}
+	f.entries = entries
+	return nil
+}
+
+// editRequest builds a request to the bills endpoints the way the dashboard's own
+// page would send it: addressed to loopback, with that page as its origin.
+func editRequest(method, body string) *http.Request {
+	req := httptest.NewRequest(method, "/api/bills", strings.NewReader(body))
+	req.Host = "127.0.0.1:5173"
+	if method != http.MethodGet {
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "http://127.0.0.1:5173")
+	}
+	return req
+}
+
+func serveEdit(store BillsStore, req *http.Request) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	New(Options{BillsStore: store}).ServeHTTP(w, req)
+	return w
+}
+
+func TestEditorReadsTheBillsAndAnyProblemWithTheFile(t *testing.T) {
+	store := &fakeStore{entries: []bills.Entry{{Name: "Rent", Amount: 1850, Day: 1}}}
+	w := serveEdit(store, editRequest("GET", ""))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"name":"Rent"`) || strings.Contains(w.Body.String(), "problem") {
+		t.Fatalf("%d %s", w.Code, w.Body.String())
+	}
+
+	broken := &fakeStore{problem: `bill "Rent": day must be 1 to 31, got 99`}
+	w = serveEdit(broken, editRequest("GET", ""))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "day must be 1 to 31") || !strings.Contains(w.Body.String(), `"bills":[]`) {
+		t.Fatalf("a broken file is reported, with an empty list: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestEditorSavesAndReturnsWhatWasSaved(t *testing.T) {
+	store := &fakeStore{}
+	w := serveEdit(store, editRequest("PUT", `{"bills":[{"name":"Rent","amount":1850,"day":1,"autopay":false},{"name":"Phone","amount":40,"day":11,"autopay":true}]}`))
+	if w.Code != 200 || store.saves != 1 || len(store.entries) != 2 || !store.entries[1].Autopay {
+		t.Fatalf("%d %s, saves %d, entries %+v", w.Code, w.Body.String(), store.saves, store.entries)
+	}
+	if !strings.Contains(w.Body.String(), `"name":"Phone"`) {
+		t.Fatalf("response should carry the saved bills: %s", w.Body.String())
+	}
+	// Saving an empty list is how the last bill is deleted.
+	w = serveEdit(store, editRequest("PUT", `{"bills":[]}`))
+	if w.Code != 200 || len(store.entries) != 0 {
+		t.Fatalf("empty save: %d %s, %+v", w.Code, w.Body.String(), store.entries)
+	}
+}
+
+func TestEditorExplainsInvalidBillsWithoutHidingServerFailures(t *testing.T) {
+	_, invalidErr := bills.Validate([]bills.Entry{{Name: "Rent", Amount: 1, Day: 99}})
+	invalid := &fakeStore{saveErr: invalidErr}
+	w := serveEdit(invalid, editRequest("PUT", `{"bills":[{"name":"Rent","amount":1,"day":99}]}`))
+	if w.Code != 400 || !strings.Contains(w.Body.String(), "day must be 1 to 31") {
+		t.Fatalf("invalid bills are the sender's to fix: %d %s", w.Code, w.Body.String())
+	}
+
+	broken := &fakeStore{saveErr: errors.New("open /secret/path: permission denied")}
+	w = serveEdit(broken, editRequest("PUT", `{"bills":[]}`))
+	if w.Code != 500 || strings.Contains(w.Body.String(), "/secret/path") {
+		t.Fatalf("server failures must not leak paths or details: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestEditorRejectsRequestsItCannotTrust(t *testing.T) {
+	cases := map[string]struct {
+		build func() *http.Request
+		want  int
+	}{
+		"another site's origin": {func() *http.Request {
+			r := editRequest("PUT", `{"bills":[]}`)
+			r.Header.Set("Origin", "http://evil.example")
+			return r
+		}, 403},
+		"a form post instead of JSON": {func() *http.Request {
+			r := editRequest("PUT", `bills=1`)
+			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			return r
+		}, 415},
+		"plain text instead of JSON": {func() *http.Request {
+			r := editRequest("PUT", `{"bills":[]}`)
+			r.Header.Set("Content-Type", "text/plain")
+			return r
+		}, 415},
+		"a hostile name pointing at this machine": {func() *http.Request {
+			r := editRequest("PUT", `{"bills":[]}`)
+			r.Host = "evil.example:8080"
+			r.Header.Set("Origin", "http://evil.example:8080")
+			return r
+		}, 403},
+		"reading from a non-loopback host": {func() *http.Request {
+			r := editRequest("GET", "")
+			r.Host = "dashboard.example.com"
+			return r
+		}, 403},
+		"an unknown field": {func() *http.Request {
+			return editRequest("PUT", `{"bills":[],"admin":true}`)
+		}, 400},
+		"malformed JSON": {func() *http.Request {
+			return editRequest("PUT", `{oops`)
+		}, 400},
+		"a body that is far too large": {func() *http.Request {
+			return editRequest("PUT", `{"bills":[{"name":"`+strings.Repeat("x", 70<<10)+`","amount":1,"day":1}]}`)
+		}, 413},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			store := &fakeStore{}
+			w := serveEdit(store, c.build())
+			if w.Code != c.want {
+				t.Fatalf("status %d, want %d: %s", w.Code, c.want, w.Body.String())
+			}
+			if store.saves != 0 {
+				t.Fatal("a rejected request must not reach the store")
+			}
+		})
+	}
+}
+
+func TestEditorAcceptsLocalhostNamesAndNoOriginHeader(t *testing.T) {
+	for _, host := range []string{"localhost:5173", "127.0.0.1", "[::1]:8080", "LOCALHOST"} {
+		r := editRequest("PUT", `{"bills":[]}`)
+		r.Host = host
+		r.Header.Del("Origin")
+		if w := serveEdit(&fakeStore{}, r); w.Code != 200 {
+			t.Errorf("host %q: %d %s", host, w.Code, w.Body.String())
+		}
+	}
+}
+
+func TestEditorIsUnavailableWhenThereIsNoStore(t *testing.T) {
+	w := httptest.NewRecorder()
+	New(Options{Mock: true}).ServeHTTP(w, editRequest("GET", ""))
+	if w.Code != 404 || !strings.Contains(w.Body.String(), "error") {
+		t.Fatalf("%d %s", w.Code, w.Body.String())
 	}
 }
 

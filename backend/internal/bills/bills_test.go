@@ -215,3 +215,114 @@ func TestDeletingTheFileMakesItUnconfiguredAgain(t *testing.T) {
 		t.Fatalf("after delete: %q", status)
 	}
 }
+
+func TestSaveWritesAPrivateFileThatTheSourceReadsBack(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "nested", "bills.json")
+	source := NewSource(path)
+	now := time.Date(2026, 11, 11, 9, 0, 0, 0, time.Local)
+
+	err := source.Save([]Entry{
+		{Name: "  Rent ", Amount: 1850, Day: 1},
+		{Name: "Internet", Amount: 65.5, Day: 15, Autopay: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("stat: %v, %v", info, err)
+	}
+	// What was saved is what the dashboard serves, with no restart in between.
+	got, status := source.Bills(now)
+	if status != domain.SourceLive || len(got) != 2 || got[0].Name != "Internet" || got[1].Name != "Rent" {
+		t.Fatalf("bills after save: %+v, %q", got, status)
+	}
+	// And the editor sees them in file order, with names tidied.
+	entries, problem := source.Entries()
+	if problem != "" || len(entries) != 2 || entries[0].Name != "Rent" || !entries[1].Autopay || entries[1].Amount != 65.5 {
+		t.Fatalf("entries: %+v, %q", entries, problem)
+	}
+}
+
+func TestSaveRejectsInvalidBillsWithoutTouchingTheFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bills.json")
+	source := NewSource(path)
+	if err := source.Save([]Entry{{Name: "Rent", Amount: 1850, Day: 1}}); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := os.ReadFile(path)
+
+	for name, bad := range map[string][]Entry{
+		"blank name":      {{Name: " ", Amount: 1, Day: 1}},
+		"day too small":   {{Name: "Rent", Amount: 1, Day: 0}},
+		"day too large":   {{Name: "Rent", Amount: 1, Day: 32}},
+		"negative amount": {{Name: "Rent", Amount: -1, Day: 1}},
+	} {
+		err := source.Save(bad)
+		if err == nil || !IsInvalid(err) {
+			t.Fatalf("%s: want an invalid-bills error, got %v", name, err)
+		}
+	}
+	if after, _ := os.ReadFile(path); string(after) != string(before) {
+		t.Fatal("a rejected save must leave the file exactly as it was")
+	}
+}
+
+func TestSaveCanReplaceABrokenFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bills.json")
+	writeBills(t, path, `{"bills": [{"name": "Rent", "day": 99}]}`)
+	source := NewSource(path)
+	now := time.Now()
+
+	entries, problem := source.Entries()
+	if len(entries) != 0 || problem == "" || !strings.Contains(problem, "day") {
+		t.Fatalf("a broken file should be reported, not hidden: %+v, %q", entries, problem)
+	}
+	if _, status := source.Bills(now); status != domain.SourceUnavailable {
+		t.Fatalf("status %q", status)
+	}
+	// The editor is how someone recovers from a mistake in the file.
+	if err := source.Save([]Entry{{Name: "Rent", Amount: 1850, Day: 1}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, status := source.Bills(now); status != domain.SourceLive || len(got) != 1 {
+		t.Fatalf("after replacing: %+v, %q", got, status)
+	}
+}
+
+func TestEntriesWithNoFileAreEmptyAndNotAProblem(t *testing.T) {
+	entries, problem := NewSource(filepath.Join(t.TempDir(), "none.json")).Entries()
+	if entries == nil || len(entries) != 0 || problem != "" {
+		t.Fatalf("got %#v, %q", entries, problem)
+	}
+	if entries, problem := NewSource("").Entries(); entries == nil || problem != "" {
+		t.Fatalf("no path: %#v, %q", entries, problem)
+	}
+	if err := NewSource("").Save(nil); err == nil || IsInvalid(err) {
+		t.Fatalf("saving with no path is a setup error, not invalid bills: %v", err)
+	}
+}
+
+func TestSavingNoBillsWritesAnEmptyList(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bills.json")
+	source := NewSource(path)
+	if err := source.Save(nil); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), `"bills": []`) {
+		t.Fatalf("expected an empty list, not null: %s", data)
+	}
+	if _, status := source.Bills(time.Now()); status != domain.SourceLive {
+		t.Fatalf("status %q", status)
+	}
+}
+
+func TestIsInvalidSeparatesBadBillsFromOtherFailures(t *testing.T) {
+	if _, err := Parse([]byte(`{oops`)); !IsInvalid(err) {
+		t.Fatalf("malformed JSON is a content problem: %v", err)
+	}
+	if IsInvalid(os.ErrPermission) {
+		t.Fatal("a permissions error is not an invalid-bills error")
+	}
+}

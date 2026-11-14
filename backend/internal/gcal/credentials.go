@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"everyday/backend/internal/fileutil"
 )
 
 // Credentials are everything needed to read a Google account's calendars. They
@@ -42,33 +44,14 @@ func LoadCredentials(path string) (Credentials, error) {
 	return c, nil
 }
 
-// SaveCredentials writes the file readable by the current user only. It writes a
-// temporary file first so a crash cannot leave a half-written credentials file.
+// SaveCredentials writes the file readable by the current user only, replacing any
+// existing one without ever leaving a half-written file.
 func SaveCredentials(path string, c Credentials) error {
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return err
-	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".google-*.json")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmp.Name())
-	if err := tmp.Chmod(0o600); err != nil {
-		tmp.Close()
-		return err
-	}
-	if _, err := tmp.Write(append(data, '\n')); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp.Name(), path)
+	return fileutil.WriteAtomic(path, append(data, '\n'), 0o600)
 }
 
 // ReadClientFile reads an OAuth client ID and secret from a JSON file. It accepts
